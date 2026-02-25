@@ -126,7 +126,7 @@
     </div>
 
     <!-- MODAL 2: QUEUE & UPLOAD -->
-    <div id="modal-queue" class="glass-modal rounded-2xl w-[340px] md:w-[380px] flex flex-col z-10" style="top: 80px; right: 40px; max-height: 80vh;">
+    <div id="modal-queue" class="glass-modal rounded-2xl w-[340px] md:w-[380px] h-[420px] flex flex-col z-10" style="top: 80px; right: 40px;">
         <!-- Drag Handle -->
         <div class="drag-handle bg-gray-800/60 p-3 rounded-t-2xl border-b border-gray-700/50 flex justify-between items-center cursor-grab hover:bg-gray-700/60 transition-colors">
             <div class="flex items-center gap-2 text-gray-300">
@@ -433,6 +433,7 @@
         // Responsive initial positioning
         window.addEventListener('load', () => {
             if (window.innerWidth < 768) {
+                // Stack windows like a deck of cards for narrow OBS docks (500x900)
                 const player = document.getElementById('modal-player');
                 const queue = document.getElementById('modal-queue');
                 const settings = document.getElementById('modal-settings');
@@ -440,19 +441,19 @@
                 
                 player.style.left = '50%';
                 player.style.transform = 'translateX(-50%)';
-                player.style.top = '60px';
+                player.style.top = '40px';
                 
                 queue.style.left = '50%';
                 queue.style.transform = 'translateX(-50%)';
-                queue.style.top = '480px';
+                queue.style.top = '90px';
                 
                 settings.style.left = '50%';
                 settings.style.transform = 'translateX(-50%)';
-                settings.style.top = '850px';
+                settings.style.top = '140px';
                 
                 commands.style.left = '50%';
                 commands.style.transform = 'translateX(-50%)';
-                commands.style.top = '1200px';
+                commands.style.top = '190px';
             } else {
                 const settings = document.getElementById('modal-settings');
                 const player = document.getElementById('modal-player');
