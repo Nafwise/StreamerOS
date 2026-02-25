@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Streamer Radio OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
+    <!-- Add YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <style>
+        body {
+            /* Prevent body scrolling while dragging */
+            overflow: hidden;
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(160, 100%, 74%, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(190, 100%, 50%, 0.15) 0px, transparent 50%);
+        }
+
+        /* Custom scrollbar for the tracklist */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+        
+        .glass-modal {
+            background: rgba(31, 41, 55, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: absolute; /* Crucial for dragging */
+        }
+
+        .drag-handle {
+            touch-action: none; /* Prevent browser handling of touch gestures on handle */
+        }
+
+        input[type="range"] {
+            accent-color: #10b981;
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen font-sans selection:bg-emerald-500 selection:text-white relative w-full h-full">
+
+    <!-- Hidden Audio Elements -->
+    <audio id="audio-player"></audio>
+    <div id="yt-player" class="hidden absolute pointer-events-none opacity-0"></div>
+
+    <!-- Top Status Bar (Optional UI decoration) -->
+    <div class="fixed top-0 left-0 w-full bg-gray-900/80 backdrop-blur-md border-b border-gray-800 p-2 flex justify-between items-center z-0 px-4 text-sm text-gray-400">
+        <div class="flex items-center gap-2">
+            <i class="ph-fill ph-radio text-emerald-500"></i>
+            <span class="font-semibold text-gray-200">StreamerOS</span>
+            <span class="opacity-50 hidden sm:inline">| DMCA Safe Audio Engine</span>
+        </div>
+        <div id="clock" class="font-mono">00:00</div>
+    </div>
+
+    <!-- MODAL 1: THE PLAYER -->
+    <div id="modal-player" class="glass-modal rounded-2xl w-[340px] md:w-[400px] flex flex-col z-10" style="top: 80px; left: 40px;">
+        <!-- Drag Handle -->
+        <div class="drag-handle bg-gray-800/60 p-3 rounded-t-2xl border-b border-gray-700/50 flex justify-between items-center cursor-grab hover:bg-gray-700/60 transition-colors">
+            <div class="flex items-center gap-2 text-gray-300">
+                <i class="ph ph-dots-six-vertical text-lg opacity-50"></i>
+                <span class="font-semibold text-sm tracking-wide">PLAYER</span>
+            </div>
+            <div class="flex gap-1.5">
+                <div class="w-3 h-3 rounded-full bg-gray-600"></div>
+                <div class="w-3 h-3 rounded-full bg-gray-600"></div>
+                <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+            </div>
+        </div>
+
+        <!-- Player Content -->
+        <div class="p-6 flex flex-col items-center relative overflow-hidden">
+            <!-- decorative background glow -->
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div id="album-art" class="w-48 h-48 bg-gray-800/80 rounded-2xl shadow-2xl flex items-center justify-center mb-6 border border-gray-700 transition-transform duration-300 relative z-10">
+                <i class="ph ph-vinyl-record text-7xl text-gray-600"></i>
+            </div>
+
+            <div class="text-center w-full relative z-10">
+                <h2 id="track-title" class="text-2xl font-bold truncate mb-1">No Track Loaded</h2>
+                <p id="track-artist" class="text-emerald-400 text-sm mb-6 truncate font-medium">Awaiting Input...</p>
+
+                <!-- Progress Bar -->
+                <div class="flex items-center gap-3 mb-6 text-xs text-gray-400 font-mono">
+                    <span id="time-current">0:00</span>
+                    <div class="flex-grow h-1.5 bg-gray-700/50 rounded-full cursor-pointer relative" id="progress-container">
+                        <div id="progress-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 to-cyan-400 rounded-full w-0 transition-all duration-75"></div>
+                    </div>
+                    <span id="time-total">0:00</span>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex items-center justify-center gap-4 md:gap-6">
+                    <button id="btn-shuffle" class="text-gray-500 hover:text-white transition-colors p-2" title="Shuffle">
+                        <i class="ph-bold ph-shuffle text-xl"></i>
+                    </button>
+                    <button id="btn-prev" class="text-gray-400 hover:text-white transition-transform hover:scale-110 p-2">
+                        <i class="ph-fill ph-skip-back text-2xl"></i>
+                    </button>
+                    <button id="btn-play" class="bg-emerald-500 hover:bg-emerald-400 text-gray-900 w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg shadow-emerald-500/20">
+                        <i class="ph-fill ph-play text-2xl ml-1" id="play-icon"></i>
+                    </button>
+                    <button id="btn-next" class="text-gray-400 hover:text-white transition-transform hover:scale-110 p-2">
+                        <i class="ph-fill ph-skip-forward text-2xl"></i>
+                    </button>
+                    <button id="btn-repeat" class="text-gray-500 hover:text-white transition-colors p-2" title="Repeat One">
+                        <i class="ph-bold ph-repeat text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Volume -->
+                <div class="flex items-center justify-center gap-3 mt-6">
+                    <i class="ph ph-speaker-low text-gray-500"></i>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.7" class="w-24 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                    <i class="ph ph-speaker-high text-gray-500"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: QUEUE & UPLOAD -->
+    <div id="modal-queue" class="glass-modal rounded-2xl w-[340px] md:w-[380px] flex flex-col z-10" style="top: 80px; right: 40px; max-height: 80vh;">
+        <!-- Drag Handle -->
+        <div class="drag-handle bg-gray-800/60 p-3 rounded-t-2xl border-b border-gray-700/50 flex justify-between items-center cursor-grab hover:bg-gray-700/60 transition-colors">
+            <div class="flex items-center gap-2 text-gray-300">
+                <i class="ph ph-dots-six-vertical text-lg opacity-50"></i>
+                <span class="font-semibold text-sm tracking-wide">QUEUE & UPLOAD</span>
+            </div>
+            <span id="track-count" class="text-xs font-mono bg-gray-700 px-2 py-0.5 rounded text-gray-300">0 TRKS</span>
+        </div>
+
+        <div class="flex flex-col flex-grow overflow-hidden p-4 gap-4">
+            
+            <!-- Upload Zone -->
+            <div id="upload-zone" class="border border-dashed border-gray-600 hover:border-emerald-500 bg-gray-800/30 rounded-xl p-4 text-center cursor-pointer transition-colors relative group shrink-0">
+                <input type="file" id="file-input" accept="audio/mpeg, audio/mp3" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                <i class="ph ph-upload-simple text-2xl text-gray-500 group-hover:text-emerald-400 mb-1 transition-colors"></i>
+                <p class="text-sm text-gray-300 font-medium">Drop MP3s or Folders here</p>
+                <p class="text-xs text-gray-500">Perfect for Suno Pro exports</p>
+            </div>
+
+            <!-- Playlist -->
+            <div class="bg-gray-800/20 rounded-xl flex-grow overflow-hidden flex flex-col border border-gray-700/30">
+                <div id="playlist" class="overflow-y-auto p-2 flex flex-col gap-1 h-full min-h-[200px]">
+                    <!-- Empty State -->
+                    <div class="h-full flex flex-col items-center justify-center text-gray-500 p-4 text-center">
+                        <i class="ph ph-music-notes-simple text-4xl mb-2 opacity-50"></i>
+                        <p class="text-sm">Queue is empty</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: TWITCH SETTINGS -->
+    <div id="modal-settings" class="glass-modal rounded-2xl w-[340px] md:w-[320px] flex flex-col z-10" style="top: 80px; left: 460px;">
+        <!-- Drag Handle -->
+        <div class="drag-handle bg-purple-900/60 p-3 rounded-t-2xl border-b border-purple-700/50 flex justify-between items-center cursor-grab hover:bg-purple-800/60 transition-colors">
+            <div class="flex items-center gap-2 text-gray-300">
+                <i class="ph-fill ph-twitch-logo text-lg text-purple-400"></i>
+                <span class="font-semibold text-sm tracking-wide">TWITCH BOT</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div id="twitch-status" class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" title="Disconnected"></div>
+                <button id="btn-min-twitch" class="no-drag text-gray-400 hover:text-white transition-colors" title="Minimize"><i class="ph-bold ph-minus text-lg"></i></button>
+            </div>
+        </div>
+
+        <div id="twitch-content" class="p-5 flex flex-col gap-4 text-sm">
+            <div>
+                <label class="block text-gray-400 text-xs mb-1 font-semibold uppercase tracking-wider">Channel Name</label>
+                <input type="text" id="twitch-channel" class="w-full bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500 transition-colors" placeholder="e.g. ninja">
+            </div>
+            <div>
+                <label class="block text-gray-400 text-xs mb-1 font-semibold uppercase tracking-wider flex justify-between">
+                    <span>OAuth Token</span>
+                    <a href="https://twitchtokengenerator.com/" target="_blank" class="text-purple-400 hover:text-purple-300 transition-colors font-normal">Get Token</a>
+                </label>
+                <input type="password" id="twitch-oauth" class="w-full bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500 transition-colors" placeholder="oauth:xxxxxxxxxxxx">
+            </div>
+            
+            <button id="btn-twitch-connect" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-lg transition-all shadow-lg shadow-purple-900/50 active:scale-95">
+                Connect to Chat
+            </button>
+            <p id="twitch-msg-ui" class="text-xs text-center text-red-400 hidden"></p>
+
+            <div class="border-t border-gray-700/50 pt-4 flex flex-col gap-3">
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="toggle-announce" class="w-4 h-4 accent-purple-500 bg-gray-800 border-gray-600 rounded cursor-pointer" checked>
+                    <span class="text-gray-300 group-hover:text-white transition-colors">Announce "Now Playing"</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="toggle-commands" class="w-4 h-4 accent-purple-500 bg-gray-800 border-gray-600 rounded cursor-pointer" checked>
+                    <span class="text-gray-300 group-hover:text-white transition-colors">Respond to <code class="bg-gray-800 px-1 py-0.5 rounded text-purple-300">!song</code></span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="toggle-requests" class="w-4 h-4 accent-emerald-500 bg-gray-800 border-gray-600 rounded cursor-pointer" checked>
+                    <span class="text-gray-300 group-hover:text-white transition-colors">Allow <code class="bg-gray-800 px-1 py-0.5 rounded text-emerald-400">!addsong &lt;link&gt;</code></span>
+                </label>
+            </div>
+            
+            <div class="border-t border-gray-700/50 pt-3 flex flex-col gap-2">
+                <label class="block text-gray-400 text-xs font-semibold uppercase tracking-wider flex justify-between items-center">
+                    <span>Community DMCA Veto</span>
+                    <span class="text-xs text-purple-400 font-normal">Votes Needed</span>
+                </label>
+                <div class="flex items-center gap-3">
+                    <input type="number" id="veto-threshold" value="3" min="1" max="100" class="w-16 bg-gray-900/80 border border-gray-700 rounded-lg px-2 py-1 text-white focus:outline-none focus:border-purple-500 transition-colors text-center">
+                    <span class="text-xs text-gray-500 leading-tight">Viewers type <code class="bg-gray-800 px-1 rounded text-purple-300">!dmca</code> or <code class="bg-gray-800 px-1 rounded text-purple-300">!veto</code> to skip risky tracks.</span>
+                </div>
+            </div>
+
+            <div class="text-[10px] text-gray-500 leading-tight mt-1 border-t border-gray-700/50 pt-3">
+                <span class="text-emerald-400">Streamer only:</span> Type <code class="bg-gray-800 px-1 rounded text-purple-300">!skip</code>, <code class="bg-gray-800 px-1 rounded text-purple-300">!play</code>, or <code class="bg-gray-800 px-1 rounded text-purple-300">!pause</code> in chat to control playback.
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: CHAT COMMANDS -->
+    <div id="modal-commands" class="glass-modal rounded-2xl w-[340px] md:w-[320px] flex flex-col z-10" style="top: 80px; left: 800px;">
+        <div class="drag-handle bg-blue-900/60 p-3 rounded-t-2xl border-b border-blue-700/50 flex justify-between items-center cursor-grab hover:bg-blue-800/60 transition-colors">
+            <div class="flex items-center gap-2 text-gray-300">
+                <i class="ph-fill ph-terminal-window text-lg text-blue-400"></i>
+                <span class="font-semibold text-sm tracking-wide">CHAT COMMANDS</span>
+            </div>
+            <button id="btn-min-commands" class="no-drag text-gray-400 hover:text-white transition-colors" title="Minimize"><i class="ph-bold ph-minus text-lg"></i></button>
+        </div>
+        <div id="commands-content" class="p-5 flex flex-col gap-3 text-sm">
+            <div class="bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                <div class="text-emerald-400 font-mono font-bold mb-1">!song</div>
+                <div class="text-xs text-gray-400">Shows the currently playing track info.</div>
+            </div>
+            <div class="bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                <div class="text-emerald-400 font-mono font-bold mb-1">!addsong &lt;link&gt;</div>
+                <div class="text-xs text-gray-400">Request a song via YouTube or direct MP3 link.</div>
+            </div>
+            <div class="bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                <div class="text-red-400 font-mono font-bold mb-1">!veto <span class="text-gray-500 font-sans text-[10px] mx-1">OR</span> !dmca</div>
+                <div class="text-xs text-gray-400">Vote to skip the current track if it violates rules.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State ---
+        let tracks = [];
+        let currentTrackIndex = -1;
+        let isPlaying = false;
+        let isShuffle = false;
+        let isRepeatOne = false;
+        let shuffleHistory = [];
+        let zIndexCounter = 10; // To manage which window is on top
+        let currentTrackDmcaVotes = new Set(); // Stores usernames of people who voted to skip
+        
+        // --- Player Engines ---
+        let activeEngine = 'html5'; // 'html5' or 'youtube'
+        let ytPlayer = null;
+        let isYtReady = false;
+
+        // Initialize YouTube Player
+        function onYouTubeIframeAPIReady() {
+            ytPlayer = new YT.Player('yt-player', {
+                height: '10',
+                width: '10',
+                playerVars: { 'controls': 0, 'disablekb': 1, 'playsinline': 1 },
+                events: {
+                    'onReady': () => { isYtReady = true; },
+                    'onStateChange': onYtStateChange
+                }
+            });
+        }
+
+        function onYtStateChange(event) {
+            if (activeEngine !== 'youtube') return;
+            
+            if (event.data === YT.PlayerState.ENDED) {
+                playNext(true);
+            } else if (event.data === YT.PlayerState.PLAYING) {
+                isPlaying = true;
+                updatePlayIcon();
+                timeTotal.textContent = formatTime(ytPlayer.getDuration());
+            } else if (event.data === YT.PlayerState.PAUSED) {
+                isPlaying = false;
+                updatePlayIcon();
+            }
+        }
+
+        // --- DOM Elements ---
+        const audio = document.getElementById('audio-player');
+        const playBtn = document.getElementById('btn-play');
+        const playIcon = document.getElementById('play-icon');
+        const prevBtn = document.getElementById('btn-prev');
+        const nextBtn = document.getElementById('btn-next');
+        const progressBar = document.getElementById('progress-bar');
+        const progressContainer = document.getElementById('progress-container');
+        const timeCurrent = document.getElementById('time-current');
+        const timeTotal = document.getElementById('time-total');
+        const volumeSlider = document.getElementById('volume-slider');
+        
+        const shuffleBtn = document.getElementById('btn-shuffle');
+        const repeatBtn = document.getElementById('btn-repeat');
+        
+        const trackTitleUI = document.getElementById('track-title');
+        const trackArtistUI = document.getElementById('track-artist');
+        const albumArt = document.getElementById('album-art');
+        
+        const fileInput = document.getElementById('file-input');
+        const playlistUI = document.getElementById('playlist');
+        const trackCountUI = document.getElementById('track-count');
+
+        // --- Twitch State & Elements ---
+        let twitchClient = null;
+        let twitchConnected = false;
+        
+        const twitchChannelInput = document.getElementById('twitch-channel');
+        const twitchOauthInput = document.getElementById('twitch-oauth');
+        const btnTwitchConnect = document.getElementById('btn-twitch-connect');
+        const twitchStatus = document.getElementById('twitch-status');
+        const twitchMsgUI = document.getElementById('twitch-msg-ui');
+        const toggleAnnounce = document.getElementById('toggle-announce');
+        const toggleCommands = document.getElementById('toggle-commands');
+        const toggleRequests = document.getElementById('toggle-requests');
+        const vetoThresholdInput = document.getElementById('veto-threshold');
+
+        // --- Clock Update ---
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }, 1000);
+
+        // --- Initialization ---
+        audio.volume = volumeSlider.value;
+
+        // --- Dragging Logic (Vanilla JS) ---
+        function makeDraggable(modalId) {
+            const modal = document.getElementById(modalId);
+            const handle = modal.querySelector('.drag-handle');
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+
+            // Bring to front on click anywhere on the modal
+            modal.addEventListener('mousedown', () => bringToFront(modal));
+            modal.addEventListener('touchstart', () => bringToFront(modal), {passive: true});
+
+            handle.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.no-drag')) return;
+                dragStart(e);
+            });
+            handle.addEventListener('touchstart', (e) => {
+                if (e.target.closest('.no-drag')) return;
+                dragStart(e);
+            }, {passive: false});
+
+            function bringToFront(element) {
+                zIndexCounter++;
+                element.style.zIndex = zIndexCounter;
+            }
+
+            function dragStart(e) {
+                bringToFront(modal);
+                
+                if (e.type === 'touchstart') {
+                    pos3 = e.touches[0].clientX;
+                    pos4 = e.touches[0].clientY;
+                    document.addEventListener('touchmove', dragAction, {passive: false});
+                    document.addEventListener('touchend', dragEnd);
+                } else {
+                    e.preventDefault();
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    document.onmouseup = dragEnd;
+                    document.onmousemove = dragAction;
+                }
+                handle.style.cursor = 'grabbing';
+            }
+
+            function dragAction(e) {
+                if (e.type === 'touchmove') e.preventDefault(); // Prevent scrolling on touch
+
+                let clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                let clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+
+                pos1 = pos3 - clientX;
+                pos2 = pos4 - clientY;
+                pos3 = clientX;
+                pos4 = clientY;
+                
+                // Calculate new position
+                let newTop = modal.offsetTop - pos2;
+                let newLeft = modal.offsetLeft - pos1;
+
+                // Simple boundaries so it doesn't get lost entirely
+                const headerHeight = 40; 
+                if(newTop < headerHeight) newTop = headerHeight;
+                if(newTop > window.innerHeight - 50) newTop = window.innerHeight - 50;
+                
+                modal.style.top = newTop + "px";
+                modal.style.left = newLeft + "px";
+            }
+
+            function dragEnd() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+                document.removeEventListener('touchmove', dragAction);
+                document.removeEventListener('touchend', dragEnd);
+                handle.style.cursor = 'grab';
+            }
+        }
+
+        // Initialize Draggability
+        makeDraggable('modal-player');
+        makeDraggable('modal-queue');
+        makeDraggable('modal-settings');
+        makeDraggable('modal-commands');
+
+        // Minimize Logic
+        document.getElementById('btn-min-twitch').addEventListener('click', () => {
+            const content = document.getElementById('twitch-content');
+            content.classList.toggle('hidden');
+        });
+
+        document.getElementById('btn-min-commands').addEventListener('click', () => {
+            const content = document.getElementById('commands-content');
+            content.classList.toggle('hidden');
+        });
+
+        // Responsive initial positioning
+        window.addEventListener('load', () => {
+            if (window.innerWidth < 768) {
+                const player = document.getElementById('modal-player');
+                const queue = document.getElementById('modal-queue');
+                const settings = document.getElementById('modal-settings');
+                const commands = document.getElementById('modal-commands');
+                
+                player.style.left = '50%';
+                player.style.transform = 'translateX(-50%)';
+                player.style.top = '60px';
+                
+                queue.style.left = '50%';
+                queue.style.transform = 'translateX(-50%)';
+                queue.style.top = '480px';
+                
+                settings.style.left = '50%';
+                settings.style.transform = 'translateX(-50%)';
+                settings.style.top = '850px';
+                
+                commands.style.left = '50%';
+                commands.style.transform = 'translateX(-50%)';
+                commands.style.top = '1200px';
+            } else {
+                const settings = document.getElementById('modal-settings');
+                const player = document.getElementById('modal-player');
+                const commands = document.getElementById('modal-commands');
+                // Place settings nicely relative to the player
+                settings.style.left = (player.offsetLeft + player.offsetWidth + 20) + 'px';
+                settings.style.top = player.offsetTop + 'px';
+                
+                commands.style.left = (settings.offsetLeft + settings.offsetWidth + 20) + 'px';
+                commands.style.top = player.offsetTop + 'px';
+            }
+        });
+
+        // --- Twitch Logic ---
+        btnTwitchConnect.addEventListener('click', () => {
+            const channel = twitchChannelInput.value.trim().toLowerCase();
+            let oauth = twitchOauthInput.value.trim();
+
+            twitchMsgUI.classList.add('hidden');
+
+            if (!channel || !oauth) {
+                twitchMsgUI.textContent = "Please enter Channel and OAuth token.";
+                twitchMsgUI.classList.remove('hidden');
+                return;
+            }
+
+            if (!oauth.startsWith('oauth:')) {
+                oauth = 'oauth:' + oauth;
+            }
+
+            if (twitchClient) {
+                twitchClient.disconnect();
+            }
+
+            btnTwitchConnect.textContent = "Connecting...";
+            btnTwitchConnect.classList.add('opacity-75', 'cursor-not-allowed');
+
+            twitchClient = new tmi.Client({
+                options: { debug: false },
+                connection: {
+                    reconnect: true,
+                    secure: true
+                },
+                identity: {
+                    username: channel, 
+                    password: oauth
+                },
+                channels: [ channel ]
+            });
+
+            twitchClient.connect().then(() => {
+                twitchConnected = true;
+                twitchStatus.classList.replace('bg-red-500', 'bg-green-500');
+                twitchStatus.classList.replace('shadow-[0_0_8px_rgba(239,68,68,0.8)]', 'shadow-[0_0_8px_rgba(34,197,94,0.8)]');
+                
+                btnTwitchConnect.textContent = "Connected!";
+                btnTwitchConnect.classList.replace('bg-purple-600', 'bg-green-600');
+                btnTwitchConnect.classList.replace('hover:bg-purple-500', 'hover:bg-green-500');
+                btnTwitchConnect.classList.remove('opacity-75', 'cursor-not-allowed');
+                
+                twitchOauthInput.type = "password"; // keep secret
+
+                // Announce connection to chat based on active settings
+                let welcomeMsg = "📻 Streamer OS Radio is online! ";
+                if (toggleCommands.checked) welcomeMsg += "Type !song to see what's playing. ";
+                if (toggleRequests.checked) welcomeMsg += "Type !addsong <link> to request a track!";
+                twitchClient.say(channel, welcomeMsg.trim());
+
+            }).catch(err => {
+                console.error(err);
+                twitchMsgUI.textContent = "Failed to connect. Check token.";
+                twitchMsgUI.classList.remove('hidden');
+                
+                twitchStatus.classList.replace('bg-green-500', 'bg-red-500');
+                btnTwitchConnect.textContent = "Connect to Chat";
+                btnTwitchConnect.classList.remove('opacity-75', 'cursor-not-allowed');
+            });
+
+            twitchClient.on('message', (channel, tags, message, self) => {
+                if (self) return; // Ignore own bot messages
+
+                if (toggleCommands.checked) {
+                    const msg = message.toLowerCase();
+                    
+                    // Song Info Command
+                    if (msg === '!song' || msg === '!music' || msg === '!track') {
+                        if (currentTrackIndex !== -1 && tracks[currentTrackIndex]) {
+                            const track = tracks[currentTrackIndex];
+                            twitchClient.say(channel, `🎵 Now Playing: ${track.title} - ${track.artist}`);
+                        } else {
+                            twitchClient.say(channel, `No track is currently playing.`);
+                        }
+                    }
+
+                    // Viewer Song Requests (!addsong)
+                    if (toggleRequests.checked && (msg.startsWith('!addsong ') || msg.startsWith('!sr '))) {
+                        const parts = message.split(' ');
+                        if (parts.length > 1) {
+                            let url = parts[1];
+                            
+                            // Check for YouTube Link
+                            const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
+                            
+                            if (ytMatch) {
+                                // Add YouTube to queue
+                                tracks.push({
+                                    title: "YouTube Request",
+                                    artist: `Req by: ${tags.username}`,
+                                    url: url,
+                                    filename: "youtube_link",
+                                    type: "youtube",
+                                    ytId: ytMatch[1]
+                                });
+                                
+                                renderPlaylist();
+                                twitchClient.say(channel, `@${tags.username}, your YouTube track was added!`);
+                                
+                                if (currentTrackIndex === -1 && tracks.length === 1) loadTrack(0);
+                                
+                            } else if (url.startsWith('http')) {
+                                // Assume Direct Audio Link
+                                tracks.push({
+                                    title: "Viewer Request",
+                                    artist: `Req by: ${tags.username}`,
+                                    url: url,
+                                    filename: "external_link",
+                                    type: "html5"
+                                });
+                                
+                                renderPlaylist();
+                                twitchClient.say(channel, `@${tags.username}, your track was added to the queue!`);
+                                
+                                if (currentTrackIndex === -1 && tracks.length === 1) loadTrack(0);
+                            } else {
+                                twitchClient.say(channel, `@${tags.username}, please provide a valid YouTube or direct audio link.`);
+                            }
+                        }
+                    }
+
+                    // Community DMCA / Veto Command
+                    if (msg === '!dmca' || msg === '!copyright' || msg === '!veto') {
+                        if (currentTrackIndex !== -1) {
+                            currentTrackDmcaVotes.add(tags.username); // Add user to the set (prevents double voting)
+                            
+                            const threshold = parseInt(vetoThresholdInput.value) || 3;
+                            
+                            if (currentTrackDmcaVotes.size >= threshold) {
+                                twitchClient.say(channel, `🚨 Community DMCA trigger hit (${currentTrackDmcaVotes.size}/${threshold} votes)! Skipping track to protect the stream!`);
+                                playNext(false);
+                            }
+                        }
+                    }
+                    
+                    // Broadcaster Remote Control feature
+                    if (tags.badges && tags.badges.broadcaster === '1') {
+                        if (msg === '!skip' || msg === '!next') {
+                            playNext(false);
+                            twitchClient.say(channel, `⏭️ Skipped track!`);
+                        } else if (msg === '!play') {
+                            if (!isPlaying) togglePlay();
+                        } else if (msg === '!pause') {
+                            if (isPlaying) togglePlay();
+                        }
+                    }
+                }
+            });
+        });
+
+        // --- Audio & File Logic ---
+        const uploadZone = document.getElementById('upload-zone');
+
+        function processFile(file) {
+            if (file.type === "audio/mpeg" || file.name.toLowerCase().endsWith(".mp3")) {
+                const objectUrl = URL.createObjectURL(file);
+                
+                let title = file.name.replace('.mp3', '');
+                let artist = "Unknown Artist";
+                if (title.includes('-')) {
+                    const parts = title.split('-');
+                    artist = parts[0].trim();
+                    title = parts.slice(1).join('-').trim();
+                }
+
+                tracks.push({
+                    title: title,
+                    artist: artist,
+                    url: objectUrl,
+                    filename: file.name,
+                    type: "html5"
+                });
+
+                renderPlaylist();
+                // Auto-play the very first track loaded
+                if (currentTrackIndex === -1 && tracks.length === 1) {
+                    loadTrack(0);
+                }
+            }
+        }
+
+        // 1. Handle standard click-to-upload
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length === 0) return;
+            Array.from(files).forEach(processFile);
+            fileInput.value = ''; 
+        });
+
+        // 2. Handle Drag & Drop (Files and Folders)
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Add visual flair when hovering with a file/folder
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, () => {
+                uploadZone.classList.add('border-emerald-500', 'bg-gray-800/60');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, () => {
+                uploadZone.classList.remove('border-emerald-500', 'bg-gray-800/60');
+            }, false);
+        });
+
+        // Intercept the drop to scan for folders
+        uploadZone.addEventListener('drop', (e) => {
+            const items = e.dataTransfer.items;
+            if (items) {
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.kind === 'file') {
+                        const entry = item.webkitGetAsEntry();
+                        if (entry) {
+                            traverseFileTree(entry);
+                        }
+                    }
+                }
+            } else {
+                // Fallback for older browsers
+                const files = e.dataTransfer.files;
+                Array.from(files).forEach(processFile);
+            }
+        });
+
+        // Recursively walk through folders to find MP3s
+        function traverseFileTree(item, path) {
+            path = path || "";
+            if (item.isFile) {
+                item.file(function(file) {
+                    processFile(file);
+                });
+            } else if (item.isDirectory) {
+                let dirReader = item.createReader();
+                dirReader.readEntries(function(entries) {
+                    for (let i = 0; i < entries.length; i++) {
+                        traverseFileTree(entries[i], path + item.name + "/");
+                    }
+                });
+            }
+        }
+
+        playBtn.addEventListener('click', togglePlay);
+        prevBtn.addEventListener('click', () => playPrev());
+        nextBtn.addEventListener('click', () => playNext(false));
+        shuffleBtn.addEventListener('click', toggleShuffle);
+        repeatBtn.addEventListener('click', toggleRepeat);
+        
+        audio.addEventListener('timeupdate', updateProgress);
+        audio.addEventListener('loadedmetadata', () => {
+            if (activeEngine === 'html5') timeTotal.textContent = formatTime(audio.duration);
+        });
+        audio.addEventListener('ended', () => playNext(true));
+
+        // Universal Progress Loop (for YouTube)
+        setInterval(() => {
+            if (activeEngine === 'youtube' && isPlaying && isYtReady && ytPlayer.getCurrentTime) {
+                const current = ytPlayer.getCurrentTime();
+                const duration = ytPlayer.getDuration();
+                if (duration > 0) {
+                    const percent = (current / duration) * 100;
+                    progressBar.style.width = `${percent}%`;
+                    timeCurrent.textContent = formatTime(current);
+                }
+            }
+        }, 500);
+
+        progressContainer.addEventListener('click', (e) => {
+            if (tracks.length === 0) return;
+            const width = progressContainer.clientWidth;
+            const clickX = e.offsetX;
+            
+            if (activeEngine === 'html5') {
+                audio.currentTime = (clickX / width) * audio.duration;
+            } else if (activeEngine === 'youtube' && isYtReady) {
+                const duration = ytPlayer.getDuration();
+                ytPlayer.seekTo((clickX / width) * duration, true);
+            }
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            audio.volume = e.target.value;
+            if (isYtReady) ytPlayer.setVolume(e.target.value * 100);
+        });
+
+        // --- Functions ---
+
+        function renderPlaylist() {
+            trackCountUI.textContent = `${tracks.length} TRKS`;
+            
+            if (tracks.length === 0) {
+                playlistUI.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-gray-500 p-4 text-center">
+                        <i class="ph ph-music-notes-simple text-4xl mb-2 opacity-50"></i>
+                        <p class="text-sm">Queue is empty</p>
+                    </div>`;
+                return;
+            }
+
+            playlistUI.innerHTML = '';
+            tracks.forEach((track, index) => {
+                const isActive = index === currentTrackIndex;
+                const trackEl = document.createElement('div');
+                trackEl.className = `p-2 rounded-lg flex items-center gap-3 cursor-pointer transition-colors group ${isActive ? 'bg-emerald-500/20 border border-emerald-500/30' : 'hover:bg-gray-700/50 border border-transparent'}`;
+                trackEl.onclick = () => loadTrack(index, true);
+
+                trackEl.innerHTML = `
+                    <div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center flex-shrink-0 relative overflow-hidden border border-gray-700">
+                        ${isActive && isPlaying ? 
+                            `<div class="flex gap-0.5 items-end h-3 w-3">
+                                <div class="w-1 bg-emerald-400 rounded-t animate-[bounce_1s_infinite] h-full"></div>
+                                <div class="w-1 bg-emerald-400 rounded-t animate-[bounce_0.8s_infinite] h-2/3"></div>
+                                <div class="w-1 bg-emerald-400 rounded-t animate-[bounce_1.2s_infinite] h-1/2"></div>
+                            </div>` 
+                            : `<i class="ph ph-music-notes text-gray-500 group-hover:text-emerald-400 text-xs transition-colors"></i>`
+                        }
+                    </div>
+                    <div class="flex-grow min-w-0">
+                        <h4 class="font-semibold text-xs truncate ${isActive ? 'text-emerald-400' : 'text-gray-200'}">${track.title}</h4>
+                        <p class="text-[10px] text-gray-500 truncate mt-0.5">${track.artist}</p>
+                    </div>
+                `;
+                playlistUI.appendChild(trackEl);
+            });
+        }
+
+        function loadTrack(index, autoPlay = false) {
+            if (index < 0 || index >= tracks.length) return;
+            
+            currentTrackIndex = index;
+            const track = tracks[index];
+            
+            trackTitleUI.textContent = track.title;
+            trackArtistUI.textContent = track.artist;
+            
+            // Switch Engines
+            if (track.type === 'youtube') {
+                activeEngine = 'youtube';
+                audio.pause(); // Stop HTML5
+                if (isYtReady) {
+                    ytPlayer.loadVideoById(track.ytId);
+                    ytPlayer.setVolume(volumeSlider.value * 100);
+                    if (!autoPlay && !isPlaying) ytPlayer.pauseVideo();
+                }
+            } else {
+                activeEngine = 'html5';
+                if (isYtReady) ytPlayer.stopVideo(); // Stop YouTube
+                audio.src = track.url;
+                if (autoPlay || isPlaying) audio.play();
+            }
+            
+            // Clear DMCA votes for the new track
+            currentTrackDmcaVotes.clear();
+            
+            // Pop animation to album art
+            albumArt.classList.add('scale-105', 'border-emerald-500');
+            setTimeout(() => albumArt.classList.remove('scale-105', 'border-emerald-500'), 200);
+
+            renderPlaylist();
+            
+            if (autoPlay || isPlaying) {
+                audio.play();
+                isPlaying = true;
+                updatePlayIcon();
+            }
+
+            // Trigger Twitch Now Playing Announcement
+            if (twitchConnected && toggleAnnounce.checked) {
+                const channelName = twitchChannelInput.value.trim().toLowerCase();
+                if (channelName && twitchClient) {
+                    twitchClient.say(channelName, `🎵 Now Playing: ${track.title} - ${track.artist}`);
+                }
+            }
+        }
+
+        function togglePlay() {
+            if (tracks.length === 0) return;
+            
+            if (activeEngine === 'html5') {
+                if (audio.paused) {
+                    audio.play();
+                    isPlaying = true;
+                } else {
+                    audio.pause();
+                    isPlaying = false;
+                }
+            } else if (activeEngine === 'youtube' && isYtReady) {
+                const state = ytPlayer.getPlayerState();
+                if (state === YT.PlayerState.PLAYING) {
+                    ytPlayer.pauseVideo();
+                    isPlaying = false;
+                } else {
+                    ytPlayer.playVideo();
+                    isPlaying = true;
+                }
+            }
+            
+            updatePlayIcon();
+            renderPlaylist(); 
+        }
+
+        function updatePlayIcon() {
+            if (isPlaying) {
+                playIcon.classList.replace('ph-play', 'ph-pause');
+                playIcon.classList.remove('ml-1');
+            } else {
+                playIcon.classList.replace('ph-pause', 'ph-play');
+                playIcon.classList.add('ml-1');
+            }
+        }
+
+        function toggleShuffle() {
+            isShuffle = !isShuffle;
+            shuffleBtn.classList.toggle('text-emerald-400', isShuffle);
+            shuffleBtn.classList.toggle('text-gray-500', !isShuffle);
+            if (isShuffle && currentTrackIndex !== -1) {
+                shuffleHistory = [currentTrackIndex]; // Start fresh history
+            }
+        }
+
+        function toggleRepeat() {
+            isRepeatOne = !isRepeatOne;
+            repeatBtn.classList.toggle('text-emerald-400', isRepeatOne);
+            repeatBtn.classList.toggle('text-gray-500', !isRepeatOne);
+            
+            if (isRepeatOne) {
+                repeatBtn.innerHTML = '<i class="ph-bold ph-repeat-once text-xl"></i>';
+            } else {
+                repeatBtn.innerHTML = '<i class="ph-bold ph-repeat text-xl"></i>';
+            }
+        }
+
+        function playNext(autoEnded = false) {
+            if (tracks.length === 0) return;
+            
+            // If the song finished naturally and Repeat One is on, restart it
+            if (autoEnded && isRepeatOne) {
+                loadTrack(currentTrackIndex, true);
+                return;
+            }
+
+            let nextIndex;
+            
+            if (isShuffle && tracks.length > 1) {
+                // Shuffle Logic: Play a random track we haven't played recently
+                let available = tracks.map((_, i) => i).filter(i => !shuffleHistory.includes(i));
+                
+                if (available.length === 0) {
+                    // All tracks played, reset history
+                    shuffleHistory = [currentTrackIndex];
+                    available = tracks.map((_, i) => i).filter(i => i !== currentTrackIndex);
+                }
+                
+                nextIndex = available[Math.floor(Math.random() * available.length)];
+                shuffleHistory.push(nextIndex);
+            } else {
+                // Normal Next Logic
+                nextIndex = currentTrackIndex + 1;
+                if (nextIndex >= tracks.length) nextIndex = 0; 
+            }
+            
+            loadTrack(nextIndex, true);
+        }
+
+        function playPrev() {
+            if (tracks.length === 0) return;
+            
+            // Re-start logic for both engines
+            let currentSecs = activeEngine === 'html5' ? audio.currentTime : (isYtReady ? ytPlayer.getCurrentTime() : 0);
+            if (currentSecs > 3) {
+                if (activeEngine === 'html5') audio.currentTime = 0;
+                else if (isYtReady) ytPlayer.seekTo(0, true);
+                return;
+            }
+            
+            let prevIndex;
+            if (isShuffle && shuffleHistory.length > 1) {
+                // Go back in shuffle history
+                shuffleHistory.pop(); // remove current
+                prevIndex = shuffleHistory[shuffleHistory.length - 1]; // get previous
+            } else {
+                // Normal Prev Logic
+                prevIndex = currentTrackIndex - 1;
+                if (prevIndex < 0) prevIndex = tracks.length - 1;
+            }
+            
+            loadTrack(prevIndex, true);
+        }
+
+        function updateProgress() {
+            if (activeEngine !== 'html5') return; // Handled by interval for YT
+            const percent = (audio.currentTime / audio.duration) * 100;
+            progressBar.style.width = `${percent}%`;
+            timeCurrent.textContent = formatTime(audio.currentTime);
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "0:00";
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+    </script>
+</body>
+</html>
