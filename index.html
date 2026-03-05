@@ -176,6 +176,18 @@
         @keyframes bounce { 0%, 100% { height: 40%; } 50% { height: 100%; } }
 
         .empty-state { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #6b7280; }
+
+        /* Tabs UI */
+        .tabs-header { display: flex; border-bottom: 1px solid rgba(88, 28, 135, 0.5); margin-bottom: 12px; }
+        .tab-btn { flex: 1; padding: 8px 0; text-align: center; font-size: 12px; font-weight: 600; color: #9ca3af; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
+        .tab-btn:hover { color: #d946ef; background: rgba(217, 70, 239, 0.05); }
+        .tab-btn.active { color: #d946ef; border-bottom-color: #d946ef; }
+        
+        /* Repository UI */
+        .genre-btn { width: 100%; padding: 12px; background: rgba(31, 41, 55, 0.4); border: 1px solid rgba(88, 28, 135, 0.3); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; }
+        .genre-btn:hover { background: rgba(88, 28, 135, 0.4); border-color: #d946ef; transform: translateY(-1px); }
+        .genre-title { font-weight: 600; color: #e5e7eb; display: flex; align-items: center; gap: 8px; }
+        .genre-count { font-size: 10px; font-family: monospace; background: rgba(15, 10, 25, 0.8); padding: 2px 6px; border-radius: 4px; color: #d946ef; }
     </style>
 </head>
 <body>
@@ -268,25 +280,42 @@
         <div class="drag-handle flex justify-between items-center">
             <div class="flex items-center gap-2 text-gray">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" opacity="0.5"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
-                <span class="font-semibold text-sm tracking-wide">QUEUE & UPLOAD</span>
+                <span class="font-semibold text-sm tracking-wide">MUSIC REPOSITORY</span>
             </div>
             <span id="track-count" class="text-xs font-mono text-gray" style="background: #374151; padding: 2px 6px; border-radius: 4px;">0 TRKS</span>
         </div>
 
-        <div class="queue-content">
-            <!-- Upload Zone -->
-            <div id="upload-zone" class="upload-zone">
-                <input type="file" id="file-input" accept="audio/mpeg, audio/mp3, audio/wav" multiple class="file-input">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 8px auto;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                <p class="text-sm font-semibold text-gray" style="margin-bottom: 4px;">Drop MP3s or Folders here</p>
-                <p class="text-xs text-gray" style="opacity: 0.7;">Supports multiple files & folders</p>
+        <div class="queue-content" style="padding-top: 8px;">
+            <!-- Tabs -->
+            <div class="tabs-header">
+                <div class="tab-btn active" id="tab-library" onclick="switchTab('library')">SERVER LIBRARY</div>
+                <div class="tab-btn" id="tab-queue" onclick="switchTab('queue')">CUSTOM QUEUE</div>
             </div>
 
-            <!-- Playlist -->
-            <div class="playlist-container" id="playlist">
-                <div class="empty-state">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.5;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                    <p class="text-sm">Queue is empty</p>
+            <!-- LIBRARY TAB CONTENT -->
+            <div id="content-library" class="flex flex-col gap-2" style="flex-grow: 1; overflow-y: auto;">
+                <p class="text-xs text-gray mb-2 text-center">Click a genre to load it into the player.</p>
+                <div id="genre-container">
+                    <!-- Genres injected via JS -->
+                </div>
+            </div>
+
+            <!-- QUEUE TAB CONTENT (Hidden by default) -->
+            <div id="content-queue" style="display: none; flex-direction: column; gap: 16px; height: calc(100% - 40px);">
+                <!-- Upload Zone -->
+                <div id="upload-zone" class="upload-zone">
+                    <input type="file" id="file-input" accept="audio/mpeg, audio/mp3, audio/wav" multiple class="file-input">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 8px auto;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <p class="text-sm font-semibold text-gray" style="margin-bottom: 4px;">Drop local MP3s here</p>
+                    <p class="text-xs text-gray" style="opacity: 0.7;">Adds to the current queue</p>
+                </div>
+
+                <!-- Playlist -->
+                <div class="playlist-container" id="playlist">
+                    <div class="empty-state">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.5;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                        <p class="text-sm">Queue is empty</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -333,6 +362,121 @@
         let shuffleHistory = [];
         let zIndexCounter = 10;
 
+        // --- ONLINE REPOSITORY DATABASE ---
+        // This is where you configure your GitHub-hosted music!
+        // The URL should be relative to your index.html file.
+        // E.g., if you make a folder called "music/tavern" and put "song.mp3" in it, the URL is "music/tavern/song.mp3"
+        const musicRepository = {
+            "Swamp Tavern": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`,
+                tracks: [
+                    { title: "Gator's Rest", artist: "Animus Tavern", url: "music/Swamp Tavern/Gator's Rest.mp3" },
+                    { title: "Grungs Run", artist: "Animus Tavern", url: "music/Swamp Tavern/Grungs Run.mp3" },
+                    { title: "Heart of the Swamp", artist: "Animus Tavern", url: "music/Swamp Tavern/Heart of the Swamp.mp3" },
+                    { title: "Lizardfolk", artist: "Animus Tavern", url: "music/Swamp Tavern/Lizardfolk.mp3" },
+                    { title: "The Croaking Toad Inn", artist: "Animus Tavern", url: "music/Swamp Tavern/The Croaking Toad Inn.mp3" },
+                    { title: "The Deluge", artist: "Animus Tavern", url: "music/Swamp Tavern/The Deluge.mp3" },
+                    { title: "The Gator-Tooth Reel", artist: "Animus Tavern", url: "music/Swamp Tavern/The Gator-Tooth Reel.mp3" },
+                    { title: "The Glowing Lily", artist: "Animus Tavern", url: "music/Swamp Tavern/The Glowing Lily.mp3" },
+                    { title: "Venom in the Vintage", artist: "Animus Tavern", url: "music/Swamp Tavern/Venom in the Vintage.mp3" },
+                    { title: "Yuan-Ti", artist: "Animus Tavern", url: "music/Swamp Tavern/Yuan-Ti.mp3" }
+                ]
+            },
+            "Human Tavern": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3v18"/><path d="M3 14.5a3.5 3.5 0 0 1 7 0V21H3v-6.5z"/><path d="M14 14.5a3.5 3.5 0 0 1 7 0V21h-7v-6.5z"/></svg>`,
+                tracks: [
+                    { title: "Black Water Swell", artist: "Animus Tavern", url: "music/Human Tavern/Black Water Swell.mp3" },
+                    { title: "Bolted Doors and Black Ale", artist: "Animus Tavern", url: "music/Human Tavern/Bolted Doors and Black Ale.mp3" },
+                    { title: "Bottom of the Barrel", artist: "Animus Tavern", url: "music/Human Tavern/Bottom of the Barrel.mp3" },
+                    { title: "Chairs in the Rafters", artist: "Animus Tavern", url: "music/Human Tavern/Chairs in the Rafters.mp3" },
+                    { title: "Guarded Favours", artist: "Animus Tavern", url: "music/Human Tavern/Guarded Favours.mp3" },
+                    { title: "Heave the Iron", artist: "Animus Tavern", url: "music/Human Tavern/Heave the Iron.mp3" },
+                    { title: "Rowdy Hearth", artist: "Animus Tavern", url: "music/Human Tavern/Rowdy Hearth.mp3" },
+                    { title: "The Chase", artist: "Animus Tavern", url: "music/Human Tavern/The Chase.mp3" },
+                    { title: "The Crooked Crown", artist: "Animus Tavern", url: "music/Human Tavern/The Crooked Crown.mp3" },
+                    { title: "The Mermaid's Coin", artist: "Animus Tavern", url: "music/Human Tavern/The Mermaid's Coin.mp3" }
+                ]
+            },
+            "Halfling Tavern": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>`,
+                tracks: [
+                    { title: "Fleeting Winds", artist: "Animus Tavern", url: "music/Halfling Tavern/Fleeting Winds.mp3" },
+                    { title: "Off Home to the Shire", artist: "Animus Tavern", url: "music/Halfling Tavern/Off Home to the Shire.mp3" },
+                    { title: "Pints and Pastries", artist: "Animus Tavern", url: "music/Halfling Tavern/Pints and Pastries.mp3" },
+                    { title: "Rain on the Thatch", artist: "Animus Tavern", url: "music/Halfling Tavern/Rain on the Thatch.mp3" },
+                    { title: "The Evening Pipe", artist: "Animus Tavern", url: "music/Halfling Tavern/The Evening Pipe.mp3" },
+                    { title: "The Hearth's Glow", artist: "Animus Tavern", url: "music/Halfling Tavern/The Hearth's Glow.mp3" },
+                    { title: "The Last Embers", artist: "Animus Tavern", url: "music/Halfling Tavern/The Last Embers.mp3" },
+                    { title: "The Oak & Ember", artist: "Animus Tavern", url: "music/Halfling Tavern/The Oak & Ember.mp3" },
+                    { title: "Viola De Sombre", artist: "Animus Tavern", url: "music/Halfling Tavern/Viola De Sombre.mp3" },
+                    { title: "Warm Fires", artist: "Animus Tavern", url: "music/Halfling Tavern/Warm Fires.mp3" }
+                ]
+            },
+            "Elven Tavern": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`,
+                tracks: [
+                    { title: "Creeping Rogue", artist: "Animus Tavern", url: "music/Elven Tavern/Creeping Rogue.mp3" },
+                    { title: "Elven Welcome", artist: "Animus Tavern", url: "music/Elven Tavern/Elven Welcome.mp3" },
+                    { title: "Gliding", artist: "Animus Tavern", url: "music/Elven Tavern/Gliding.mp3" },
+                    { title: "Grand Visions", artist: "Animus Tavern", url: "music/Elven Tavern/Grand Visions.mp3" },
+                    { title: "Haunted Forest", artist: "Animus Tavern", url: "music/Elven Tavern/Haunted Forest.mp3" },
+                    { title: "Leaves in the Mud", artist: "Animus Tavern", url: "music/Elven Tavern/Leaves in the Mud.mp3" },
+                    { title: "Sparks in the Canopy", artist: "Animus Tavern", url: "music/Elven Tavern/Sparks in the Canopy.mp3" },
+                    { title: "Tangled Branches", artist: "Animus Tavern", url: "music/Elven Tavern/Tangled Branches.mp3" },
+                    { title: "Weathered Faces", artist: "Animus Tavern", url: "music/Elven Tavern/Weathered Faces.mp3" },
+                    { title: "Whispers in the Briar", artist: "Animus Tavern", url: "music/Elven Tavern/Whispers in the Briar.mp3" }
+                ]
+            },
+            "Dwarven Tavern": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3v6"/><path d="M13 3v6"/><path d="M2 9h20"/><path d="M12 22V9"/></svg>`,
+                tracks: [
+                    { title: "Blood on the Obsidian", artist: "Animus Tavern", url: "music/Dwarven Tavern/Blood on the Obsidian.mp3" },
+                    { title: "Dwarven Bar Fight", artist: "Animus Tavern", url: "music/Dwarven Tavern/Dwarven Bar Fight.mp3" },
+                    { title: "Dwarven Welcome", artist: "Animus Tavern", url: "music/Dwarven Tavern/Dwarven Welcome.mp3" },
+                    { title: "Guardian Stones", artist: "Animus Tavern", url: "music/Dwarven Tavern/Guardian Stones.mp3" },
+                    { title: "Knuckles on the Oak", artist: "Animus Tavern", url: "music/Dwarven Tavern/Knuckles on the Oak.mp3" },
+                    { title: "Oaken Cask", artist: "Animus Tavern", url: "music/Dwarven Tavern/Oaken Cask.mp3" },
+                    { title: "Obsidian Halls", artist: "Animus Tavern", url: "music/Dwarven Tavern/Obsidian Halls.mp3" },
+                    { title: "Sparks on the Anvil", artist: "Animus Tavern", url: "music/Dwarven Tavern/Sparks on the Anvil.mp3" },
+                    { title: "The Granite Goblet", artist: "Animus Tavern", url: "music/Dwarven Tavern/The Granite Goblet.mp3" },
+                    { title: "Weight of the Crown", artist: "Animus Tavern", url: "music/Dwarven Tavern/Weight of the Crown.mp3" }
+                ]
+            },
+            "Space Tavern": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>`,
+                tracks: [
+                    { title: "Arcadia", artist: "Animus Tavern", url: "music/Space Tavern/Arcadia.mp3" },
+                    { title: "Cassette Tape and Tonic", artist: "Animus Tavern", url: "music/Space Tavern/Cassette Tape and Tonic.mp3" },
+                    { title: "Insert Coin to Drink", artist: "Animus Tavern", url: "music/Space Tavern/Insert Coin to Drink.mp3" },
+                    { title: "Neon on the Rock of Bral", artist: "Animus Tavern", url: "music/Space Tavern/Neon on the Rock of Bral.mp3" },
+                    { title: "Starlight Journeys", artist: "Animus Tavern", url: "music/Space Tavern/Starlight Journeys.mp3" },
+                    { title: "System Overload", artist: "Animus Tavern", url: "music/Space Tavern/System Overload.mp3" }
+                ]
+            },
+            "Tavern Music": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3v18"/><path d="M3 14.5a3.5 3.5 0 0 1 7 0V21H3v-6.5z"/><path d="M14 14.5a3.5 3.5 0 0 1 7 0V21h-7v-6.5z"/></svg>`,
+                tracks: [
+                    // Example tracks. Replace these with your actual filenames!
+                    { title: "The Drunken Goblin", artist: "Animus Tavern", url: "music/tavern/drunken_goblin.mp3" },
+                    { title: "Hearth and Ale (Chorus)", artist: "Animus Tavern", url: "music/tavern/hearth_and_ale.mp3" }
+                ]
+            },
+            "Combat & Encounters": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h5v5"/><path d="M19.5 4l-10 10"/><path d="M9.5 20h-5v-5"/><path d="M4.5 20l10-10"/></svg>`,
+                tracks: [
+                    { title: "Roll for Initiative", artist: "Animus Tavern", url: "music/combat/initiative.mp3" },
+                    { title: "Dragon's Breath", artist: "Animus Tavern", url: "music/combat/dragons_breath.mp3" }
+                ]
+            },
+            "Ambient Exploration": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>`,
+                tracks: [
+                    { title: "Dark Woods", artist: "Animus Tavern", url: "music/ambient/dark_woods.mp3" },
+                    { title: "The Astral Sea", artist: "Animus Tavern", url: "music/ambient/astral_sea.mp3" }
+                ]
+            }
+        };
+
         // --- DOM Elements ---
         const audio = document.getElementById('audio-player');
         const playBtn = document.getElementById('btn-play');
@@ -356,6 +500,7 @@
         const playlistUI = document.getElementById('playlist');
         const trackCountUI = document.getElementById('track-count');
         const uploadZone = document.getElementById('upload-zone');
+        const genreContainer = document.getElementById('genre-container');
 
         // SVG Constants
         const iconPlay = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
@@ -369,6 +514,56 @@
         }, 1000);
 
         audio.volume = volumeSlider.value;
+
+        // --- Tabs Logic ---
+        window.switchTab = function(tabName) {
+            // Update Buttons
+            document.getElementById('tab-library').classList.toggle('active', tabName === 'library');
+            document.getElementById('tab-queue').classList.toggle('active', tabName === 'queue');
+            
+            // Update Content
+            document.getElementById('content-library').style.display = tabName === 'library' ? 'flex' : 'none';
+            document.getElementById('content-queue').style.display = tabName === 'queue' ? 'flex' : 'none';
+        }
+
+        // --- Render Repository Genres ---
+        function renderLibrary() {
+            genreContainer.innerHTML = '';
+            for (const [genreName, data] of Object.entries(musicRepository)) {
+                const btn = document.createElement('div');
+                btn.className = 'genre-btn';
+                btn.onclick = () => loadGenreToQueue(genreName);
+                
+                btn.innerHTML = `
+                    <div class="genre-title">
+                        <span style="color: #a855f7;">${data.icon}</span>
+                        ${genreName}
+                    </div>
+                    <div class="genre-count">${data.tracks.length} Tracks</div>
+                `;
+                genreContainer.appendChild(btn);
+            }
+        }
+
+        function loadGenreToQueue(genreName) {
+            const genreData = musicRepository[genreName];
+            if (!genreData || genreData.tracks.length === 0) {
+                alert("No tracks found in this genre folder yet!");
+                return;
+            }
+
+            // Replace current queue with the genre tracks
+            tracks = [...genreData.tracks];
+            shuffleHistory = [];
+            
+            // Automatically switch to the queue tab to show them
+            switchTab('queue');
+            
+            // Start playing the first track of the genre
+            loadTrack(0, true);
+        }
+
+        renderLibrary(); // Call this on startup to build the buttons
 
         // --- Dragging Logic ---
         function makeDraggable(modalId) {
@@ -465,7 +660,7 @@
                 const objectUrl = URL.createObjectURL(file);
                 
                 let title = file.name.replace(/\.[^/.]+$/, ""); // strip extension
-                let artist = "Local File";
+                let artist = "Animus Tavern"; // Default to your brand for local uploads
                 
                 // Smart parsing: Try to detect "(Backing vocals)" or standard "Artist - Title" format
                 if (title.includes('-')) {
