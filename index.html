@@ -3,34 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Streamer Radio OS</title>
+    <title>Animus Tavern Music Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
     <!-- Add YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         body {
             /* Prevent body scrolling while dragging */
             overflow: hidden;
-            background-color: #0f172a;
+            background-color: #030014;
             background-image: 
-                radial-gradient(at 0% 0%, hsla(160, 100%, 74%, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, hsla(190, 100%, 50%, 0.15) 0px, transparent 50%);
+                radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.4) 0%, transparent 50%), /* Deep Purple */
+                radial-gradient(circle at 85% 30%, rgba(14, 116, 144, 0.4) 0%, transparent 50%), /* Cyan */
+                radial-gradient(circle at 50% 80%, rgba(134, 25, 143, 0.3) 0%, transparent 50%); /* Magenta */
+        }
+        
+        .stars {
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
         }
 
         /* Custom scrollbar for the tracklist */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+        ::-webkit-scrollbar-thumb:hover { background: #d946ef; /* fuchsia-500 */ }
         
         .glass-modal {
-            background: rgba(31, 41, 55, 0.6);
+            background: rgba(15, 10, 25, 0.65);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(168, 85, 247, 0.15); /* subtle purple border */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 20px rgba(168, 85, 247, 0.1); /* outer glow */
             position: absolute; /* Crucial for dragging */
         }
 
@@ -39,22 +50,26 @@
         }
 
         input[type="range"] {
-            accent-color: #10b981;
+            accent-color: #d946ef; /* Fuchsia */
         }
     </style>
 </head>
-<body class="text-white min-h-screen font-sans selection:bg-emerald-500 selection:text-white relative w-full h-full">
+<body class="text-white min-h-screen font-sans selection:bg-fuchsia-500 selection:text-white relative w-full h-full">
+
+    <!-- Starry background layer -->
+    <div class="stars pointer-events-none absolute inset-0 z-0 opacity-50"></div>
 
     <!-- Hidden Audio Elements -->
     <audio id="audio-player"></audio>
     <div id="yt-player" class="hidden absolute pointer-events-none opacity-0"></div>
 
-    <!-- Top Status Bar (Optional UI decoration) -->
-    <div class="fixed top-0 left-0 w-full bg-gray-900/80 backdrop-blur-md border-b border-gray-800 p-2 flex justify-between items-center z-0 px-4 text-sm text-gray-400">
+    <!-- Top Status Bar -->
+    <div class="fixed top-0 left-0 w-full bg-[#030014]/80 backdrop-blur-md border-b border-purple-900/50 p-2 flex justify-between items-center z-0 px-4 text-sm text-gray-400">
         <div class="flex items-center gap-2">
-            <i class="ph-fill ph-radio text-emerald-500"></i>
-            <span class="font-semibold text-gray-200">StreamerOS</span>
-            <span class="opacity-50 hidden sm:inline">| DMCA Safe Audio Engine</span>
+            <i class="ph-fill ph-discord-logo text-purple-400 text-lg"></i>
+            <span class="font-semibold text-gray-200">Animus Tavern Music Player</span>
+            <span class="opacity-50 hidden sm:inline">|</span>
+            <span id="discord-status" class="text-yellow-400 text-xs animate-pulse">Connecting to Discord SDK...</span>
         </div>
         <div id="clock" class="font-mono">00:00</div>
     </div>
@@ -62,7 +77,7 @@
     <!-- MODAL 1: THE PLAYER -->
     <div id="modal-player" class="glass-modal rounded-2xl w-[340px] md:w-[400px] flex flex-col z-10" style="top: 80px; left: 40px;">
         <!-- Drag Handle -->
-        <div class="drag-handle bg-gray-800/60 p-3 rounded-t-2xl border-b border-gray-700/50 flex justify-between items-center cursor-grab hover:bg-gray-700/60 transition-colors">
+        <div class="drag-handle bg-purple-900/30 p-3 rounded-t-2xl border-b border-purple-700/50 flex justify-between items-center cursor-grab hover:bg-purple-800/40 transition-colors">
             <div class="flex items-center gap-2 text-gray-300">
                 <i class="ph ph-dots-six-vertical text-lg opacity-50"></i>
                 <span class="font-semibold text-sm tracking-wide">PLAYER</span>
@@ -70,28 +85,28 @@
             <div class="flex gap-1.5">
                 <div class="w-3 h-3 rounded-full bg-gray-600"></div>
                 <div class="w-3 h-3 rounded-full bg-gray-600"></div>
-                <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                <div class="w-3 h-3 rounded-full bg-fuchsia-500 animate-pulse"></div>
             </div>
         </div>
 
         <!-- Player Content -->
         <div class="p-6 flex flex-col items-center relative overflow-hidden">
             <!-- decorative background glow -->
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-fuchsia-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
-            <div id="album-art" class="w-48 h-48 bg-gray-800/80 rounded-2xl shadow-2xl flex items-center justify-center mb-6 border border-gray-700 transition-transform duration-300 relative z-10">
+            <div id="album-art" class="w-48 h-48 bg-[#0a0514]/80 rounded-2xl shadow-2xl flex items-center justify-center mb-6 border border-purple-900/50 transition-transform duration-300 relative z-10">
                 <i class="ph ph-vinyl-record text-7xl text-gray-600"></i>
             </div>
 
             <div class="text-center w-full relative z-10">
                 <h2 id="track-title" class="text-2xl font-bold truncate mb-1">No Track Loaded</h2>
-                <p id="track-artist" class="text-emerald-400 text-sm mb-6 truncate font-medium">Awaiting Input...</p>
+                <p id="track-artist" class="text-fuchsia-400 text-sm mb-6 truncate font-medium">Awaiting Input...</p>
 
                 <!-- Progress Bar -->
                 <div class="flex items-center gap-3 mb-6 text-xs text-gray-400 font-mono">
                     <span id="time-current">0:00</span>
                     <div class="flex-grow h-1.5 bg-gray-700/50 rounded-full cursor-pointer relative" id="progress-container">
-                        <div id="progress-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 to-cyan-400 rounded-full w-0 transition-all duration-75"></div>
+                        <div id="progress-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-600 via-fuchsia-500 to-cyan-400 rounded-full w-0 transition-all duration-75"></div>
                     </div>
                     <span id="time-total">0:00</span>
                 </div>
@@ -104,7 +119,7 @@
                     <button id="btn-prev" class="text-gray-400 hover:text-white transition-transform hover:scale-110 p-2">
                         <i class="ph-fill ph-skip-back text-2xl"></i>
                     </button>
-                    <button id="btn-play" class="bg-emerald-500 hover:bg-emerald-400 text-gray-900 w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg shadow-emerald-500/20">
+                    <button id="btn-play" class="bg-gradient-to-br from-purple-600 to-fuchsia-500 hover:from-purple-500 hover:to-fuchsia-400 text-white w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg shadow-fuchsia-500/30">
                         <i class="ph-fill ph-play text-2xl ml-1" id="play-icon"></i>
                     </button>
                     <button id="btn-next" class="text-gray-400 hover:text-white transition-transform hover:scale-110 p-2">
@@ -128,7 +143,7 @@
     <!-- MODAL 2: QUEUE & UPLOAD -->
     <div id="modal-queue" class="glass-modal rounded-2xl w-[340px] md:w-[380px] h-[420px] flex flex-col z-10" style="top: 80px; right: 40px;">
         <!-- Drag Handle -->
-        <div class="drag-handle bg-gray-800/60 p-3 rounded-t-2xl border-b border-gray-700/50 flex justify-between items-center cursor-grab hover:bg-gray-700/60 transition-colors">
+        <div class="drag-handle bg-purple-900/30 p-3 rounded-t-2xl border-b border-purple-700/50 flex justify-between items-center cursor-grab hover:bg-purple-800/40 transition-colors">
             <div class="flex items-center gap-2 text-gray-300">
                 <i class="ph ph-dots-six-vertical text-lg opacity-50"></i>
                 <span class="font-semibold text-sm tracking-wide">QUEUE & UPLOAD</span>
@@ -139,16 +154,24 @@
         <div class="flex flex-col flex-grow overflow-hidden p-4 gap-4">
             
             <!-- Upload Zone -->
-            <div id="upload-zone" class="border border-dashed border-gray-600 hover:border-emerald-500 bg-gray-800/30 rounded-xl p-4 text-center cursor-pointer transition-colors relative group shrink-0">
+            <div id="upload-zone" class="border border-dashed border-gray-600 hover:border-fuchsia-500 bg-gray-800/30 rounded-xl p-4 text-center cursor-pointer transition-colors relative group shrink-0">
                 <input type="file" id="file-input" accept="audio/mpeg, audio/mp3" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                <i class="ph ph-upload-simple text-2xl text-gray-500 group-hover:text-emerald-400 mb-1 transition-colors"></i>
+                <i class="ph ph-upload-simple text-2xl text-gray-500 group-hover:text-fuchsia-400 mb-1 transition-colors"></i>
                 <p class="text-sm text-gray-300 font-medium">Drop MP3s or Folders here</p>
                 <p class="text-xs text-gray-500">Supports multiple files & folders</p>
             </div>
 
+            <!-- YouTube Link Add -->
+            <div class="flex gap-2 shrink-0">
+                <input type="text" id="yt-link-input" placeholder="Paste YouTube link here..." class="flex-grow bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-fuchsia-500 transition-colors">
+                <button id="btn-add-yt" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors">
+                    Add
+                </button>
+            </div>
+
             <!-- Playlist -->
             <div class="bg-gray-800/20 rounded-xl flex-grow overflow-hidden flex flex-col border border-gray-700/30">
-                <div id="playlist" class="overflow-y-auto p-2 flex flex-col gap-1 h-full min-h-[200px]">
+                <div id="playlist" class="overflow-y-auto p-2 flex flex-col gap-1 h-full min-h-[140px]">
                     <!-- Empty State -->
                     <div class="h-full flex flex-col items-center justify-center text-gray-500 p-4 text-center">
                         <i class="ph ph-music-notes-simple text-4xl mb-2 opacity-50"></i>
@@ -159,96 +182,55 @@
         </div>
     </div>
 
-    <!-- MODAL 3: TWITCH SETTINGS -->
-    <div id="modal-settings" class="glass-modal rounded-2xl w-[340px] md:w-[320px] flex flex-col z-10" style="top: 80px; left: 460px;">
-        <!-- Drag Handle -->
-        <div class="drag-handle bg-purple-900/60 p-3 rounded-t-2xl border-b border-purple-700/50 flex justify-between items-center cursor-grab hover:bg-purple-800/60 transition-colors">
-            <div class="flex items-center gap-2 text-gray-300">
-                <i class="ph-fill ph-twitch-logo text-lg text-purple-400"></i>
-                <span class="font-semibold text-sm tracking-wide">TWITCH BOT</span>
-            </div>
-            <div class="flex items-center gap-3">
-                <div id="twitch-status" class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" title="Disconnected"></div>
-                <button id="btn-min-twitch" class="no-drag text-gray-400 hover:text-white transition-colors" title="Minimize"><i class="ph-bold ph-minus text-lg"></i></button>
-            </div>
-        </div>
+    <!-- Type module allows us to use modern imports like the Discord SDK -->
+    <script type="module">
+        // --- 1. Discord Embedded App SDK Integration ---
+        import { DiscordSDK } from 'https://esm.sh/@discord/embedded-app-sdk';
 
-        <div id="twitch-content" class="p-5 flex flex-col gap-4 text-sm">
-            <div>
-                <label class="block text-gray-400 text-xs mb-1 font-semibold uppercase tracking-wider">Channel Name</label>
-                <input type="text" id="twitch-channel" class="w-full bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500 transition-colors" placeholder="e.g. ninja">
-            </div>
-            <div>
-                <label class="block text-gray-400 text-xs mb-1 font-semibold uppercase tracking-wider flex justify-between">
-                    <span>OAuth Token</span>
-                    <a href="https://twitchtokengenerator.com/" target="_blank" class="text-purple-400 hover:text-purple-300 transition-colors font-normal">Get Token</a>
-                </label>
-                <input type="password" id="twitch-oauth" class="w-full bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500 transition-colors" placeholder="oauth:xxxxxxxxxxxx">
-            </div>
-            
-            <button id="btn-twitch-connect" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 rounded-lg transition-all shadow-lg shadow-purple-900/50 active:scale-95">
-                Connect to Chat
-            </button>
-            <p id="twitch-msg-ui" class="text-xs text-center text-red-400 hidden"></p>
+        // NOTE: Before deploying, replace this with your actual Discord Application Client ID!
+        const DISCORD_CLIENT_ID = 'YOUR_DISCORD_CLIENT_ID';
+        
+        let discordSdk;
 
-            <div class="border-t border-gray-700/50 pt-4 flex flex-col gap-3">
-                <label class="flex items-center gap-3 cursor-pointer group">
-                    <input type="checkbox" id="toggle-announce" class="w-4 h-4 accent-purple-500 bg-gray-800 border-gray-600 rounded cursor-pointer" checked>
-                    <span class="text-gray-300 group-hover:text-white transition-colors">Announce "Now Playing"</span>
-                </label>
-                <label class="flex items-center gap-3 cursor-pointer group">
-                    <input type="checkbox" id="toggle-commands" class="w-4 h-4 accent-purple-500 bg-gray-800 border-gray-600 rounded cursor-pointer" checked>
-                    <span class="text-gray-300 group-hover:text-white transition-colors">Respond to <code class="bg-gray-800 px-1 py-0.5 rounded text-purple-300">!song</code></span>
-                </label>
-                <label class="flex items-center gap-3 cursor-pointer group">
-                    <input type="checkbox" id="toggle-requests" class="w-4 h-4 accent-emerald-500 bg-gray-800 border-gray-600 rounded cursor-pointer" checked>
-                    <span class="text-gray-300 group-hover:text-white transition-colors">Allow <code class="bg-gray-800 px-1 py-0.5 rounded text-emerald-400">!addsong &lt;link&gt;</code></span>
-                </label>
-            </div>
-            
-            <div class="border-t border-gray-700/50 pt-3 flex flex-col gap-2">
-                <label class="block text-gray-400 text-xs font-semibold uppercase tracking-wider flex justify-between items-center">
-                    <span>Community DMCA Veto</span>
-                    <span class="text-xs text-purple-400 font-normal">Votes Needed</span>
-                </label>
-                <div class="flex items-center gap-3">
-                    <input type="number" id="veto-threshold" value="3" min="1" max="100" class="w-16 bg-gray-900/80 border border-gray-700 rounded-lg px-2 py-1 text-white focus:outline-none focus:border-purple-500 transition-colors text-center">
-                    <span class="text-xs text-gray-500 leading-tight">Viewers type <code class="bg-gray-800 px-1 rounded text-purple-300">!dmca</code> or <code class="bg-gray-800 px-1 rounded text-purple-300">!veto</code> to skip risky tracks.</span>
-                </div>
-            </div>
+        async function initDiscord() {
+            try {
+                // The SDK throws an error if it's not opened inside a Discord iframe (missing frame_id)
+                // This check prevents it from crashing when you test it locally in your standard browser.
+                const urlParams = new URLSearchParams(window.location.search);
+                if (!urlParams.get('frame_id')) {
+                    throw new Error("Missing frame_id. Running in browser instead of Discord.");
+                }
 
-            <div class="text-[10px] text-gray-500 leading-tight mt-1 border-t border-gray-700/50 pt-3">
-                <span class="text-emerald-400">Streamer only:</span> Type <code class="bg-gray-800 px-1 rounded text-purple-300">!skip</code>, <code class="bg-gray-800 px-1 rounded text-purple-300">!play</code>, or <code class="bg-gray-800 px-1 rounded text-purple-300">!pause</code> in chat to control playback.
-            </div>
-        </div>
-    </div>
+                // Initialize the SDK
+                discordSdk = new DiscordSDK(DISCORD_CLIENT_ID);
+                
+                // This command tells the Discord client your activity has loaded and is ready to be shown
+                await discordSdk.ready();
+                
+                console.log("Discord SDK Handshake Complete!");
+                
+                // Update top bar UI
+                const statusSpan = document.getElementById('discord-status');
+                statusSpan.textContent = "Activity Ready";
+                statusSpan.classList.replace('text-yellow-400', 'text-green-400');
+                statusSpan.classList.remove('animate-pulse');
 
-    <!-- MODAL 4: CHAT COMMANDS -->
-    <div id="modal-commands" class="glass-modal rounded-2xl w-[340px] md:w-[320px] flex flex-col z-10" style="top: 80px; left: 800px;">
-        <div class="drag-handle bg-blue-900/60 p-3 rounded-t-2xl border-b border-blue-700/50 flex justify-between items-center cursor-grab hover:bg-blue-800/60 transition-colors">
-            <div class="flex items-center gap-2 text-gray-300">
-                <i class="ph-fill ph-terminal-window text-lg text-blue-400"></i>
-                <span class="font-semibold text-sm tracking-wide">CHAT COMMANDS</span>
-            </div>
-            <button id="btn-min-commands" class="no-drag text-gray-400 hover:text-white transition-colors" title="Minimize"><i class="ph-bold ph-minus text-lg"></i></button>
-        </div>
-        <div id="commands-content" class="p-5 flex flex-col gap-3 text-sm">
-            <div class="bg-gray-900/50 p-3 rounded-lg border border-gray-700">
-                <div class="text-emerald-400 font-mono font-bold mb-1">!song</div>
-                <div class="text-xs text-gray-400">Shows the currently playing track info.</div>
-            </div>
-            <div class="bg-gray-900/50 p-3 rounded-lg border border-gray-700">
-                <div class="text-emerald-400 font-mono font-bold mb-1">!addsong &lt;link&gt;</div>
-                <div class="text-xs text-gray-400">Request a song via YouTube or direct MP3 link.</div>
-            </div>
-            <div class="bg-gray-900/50 p-3 rounded-lg border border-gray-700">
-                <div class="text-red-400 font-mono font-bold mb-1">!veto <span class="text-gray-500 font-sans text-[10px] mx-1">OR</span> !dmca</div>
-                <div class="text-xs text-gray-400">Vote to skip the current track if it violates rules.</div>
-            </div>
-        </div>
-    </div>
+                // TODO: Here is where you would handle authentication if you need to know exactly 
+                // who the user is, or fetch the channel ID for a multiplayer backend server.
 
-    <script>
+            } catch (error) {
+                console.warn("Discord SDK Initialization Skipped:", error.message);
+                const statusSpan = document.getElementById('discord-status');
+                statusSpan.textContent = "Running Outside Discord";
+                statusSpan.classList.replace('text-yellow-400', 'text-gray-500');
+                statusSpan.classList.remove('animate-pulse');
+            }
+        }
+
+        // Start the handshake immediately
+        initDiscord();
+
+
         // --- State ---
         let tracks = [];
         let currentTrackIndex = -1;
@@ -256,16 +238,15 @@
         let isShuffle = false;
         let isRepeatOne = false;
         let shuffleHistory = [];
-        let zIndexCounter = 10; // To manage which window is on top
-        let currentTrackDmcaVotes = new Set(); // Stores usernames of people who voted to skip
+        let zIndexCounter = 10;
         
         // --- Player Engines ---
         let activeEngine = 'html5'; // 'html5' or 'youtube'
         let ytPlayer = null;
         let isYtReady = false;
 
-        // Initialize YouTube Player
-        function onYouTubeIframeAPIReady() {
+        // Initialize YouTube Player globally since the API calls it on the window object
+        window.onYouTubeIframeAPIReady = function() {
             ytPlayer = new YT.Player('yt-player', {
                 height: '10',
                 width: '10',
@@ -275,7 +256,7 @@
                     'onStateChange': onYtStateChange
                 }
             });
-        }
+        };
 
         function onYtStateChange(event) {
             if (activeEngine !== 'youtube') return;
@@ -314,20 +295,8 @@
         const fileInput = document.getElementById('file-input');
         const playlistUI = document.getElementById('playlist');
         const trackCountUI = document.getElementById('track-count');
-
-        // --- Twitch State & Elements ---
-        let twitchClient = null;
-        let twitchConnected = false;
-        
-        const twitchChannelInput = document.getElementById('twitch-channel');
-        const twitchOauthInput = document.getElementById('twitch-oauth');
-        const btnTwitchConnect = document.getElementById('btn-twitch-connect');
-        const twitchStatus = document.getElementById('twitch-status');
-        const twitchMsgUI = document.getElementById('twitch-msg-ui');
-        const toggleAnnounce = document.getElementById('toggle-announce');
-        const toggleCommands = document.getElementById('toggle-commands');
-        const toggleRequests = document.getElementById('toggle-requests');
-        const vetoThresholdInput = document.getElementById('veto-threshold');
+        const ytLinkInput = document.getElementById('yt-link-input');
+        const btnAddYt = document.getElementById('btn-add-yt');
 
         // --- Clock Update ---
         setInterval(() => {
@@ -338,13 +307,12 @@
         // --- Initialization ---
         audio.volume = volumeSlider.value;
 
-        // --- Dragging Logic (Vanilla JS) ---
+        // --- Dragging Logic ---
         function makeDraggable(modalId) {
             const modal = document.getElementById(modalId);
             const handle = modal.querySelector('.drag-handle');
             let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
 
-            // Bring to front on click anywhere on the modal
             modal.addEventListener('mousedown', () => bringToFront(modal));
             modal.addEventListener('touchstart', () => bringToFront(modal), {passive: true});
 
@@ -381,7 +349,7 @@
             }
 
             function dragAction(e) {
-                if (e.type === 'touchmove') e.preventDefault(); // Prevent scrolling on touch
+                if (e.type === 'touchmove') e.preventDefault();
 
                 let clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
                 let clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
@@ -391,11 +359,9 @@
                 pos3 = clientX;
                 pos4 = clientY;
                 
-                // Calculate new position
                 let newTop = modal.offsetTop - pos2;
                 let newLeft = modal.offsetLeft - pos1;
 
-                // Simple boundaries so it doesn't get lost entirely
                 const headerHeight = 40; 
                 if(newTop < headerHeight) newTop = headerHeight;
                 if(newTop > window.innerHeight - 50) newTop = window.innerHeight - 50;
@@ -413,213 +379,34 @@
             }
         }
 
-        // Initialize Draggability
         makeDraggable('modal-player');
         makeDraggable('modal-queue');
-        makeDraggable('modal-settings');
-        makeDraggable('modal-commands');
-
-        // Minimize Logic
-        document.getElementById('btn-min-twitch').addEventListener('click', () => {
-            const content = document.getElementById('twitch-content');
-            content.classList.toggle('hidden');
-        });
-
-        document.getElementById('btn-min-commands').addEventListener('click', () => {
-            const content = document.getElementById('commands-content');
-            content.classList.toggle('hidden');
-        });
 
         // Responsive initial positioning
         window.addEventListener('load', () => {
-            if (window.innerWidth < 768) {
-                // Stack windows like a deck of cards for narrow OBS docks (500x900)
-                const player = document.getElementById('modal-player');
-                const queue = document.getElementById('modal-queue');
-                const settings = document.getElementById('modal-settings');
-                const commands = document.getElementById('modal-commands');
-                
+            const player = document.getElementById('modal-player');
+            const queue = document.getElementById('modal-queue');
+
+            if (window.innerWidth < 800) {
                 player.style.left = '50%';
                 player.style.transform = 'translateX(-50%)';
-                player.style.top = '40px';
+                player.style.top = '60px';
                 
                 queue.style.left = '50%';
                 queue.style.transform = 'translateX(-50%)';
-                queue.style.top = '90px';
-                
-                settings.style.left = '50%';
-                settings.style.transform = 'translateX(-50%)';
-                settings.style.top = '140px';
-                
-                commands.style.left = '50%';
-                commands.style.transform = 'translateX(-50%)';
-                commands.style.top = '190px';
+                queue.style.top = '120px';
             } else {
-                const settings = document.getElementById('modal-settings');
-                const player = document.getElementById('modal-player');
-                const commands = document.getElementById('modal-commands');
-                // Place settings nicely relative to the player
-                settings.style.left = (player.offsetLeft + player.offsetWidth + 20) + 'px';
-                settings.style.top = player.offsetTop + 'px';
+                // Center them together side by side
+                const totalWidth = player.offsetWidth + 20 + queue.offsetWidth;
+                const startLeft = (window.innerWidth - totalWidth) / 2;
+                const topPos = (window.innerHeight - queue.offsetHeight) / 2;
                 
-                commands.style.left = (settings.offsetLeft + settings.offsetWidth + 20) + 'px';
-                commands.style.top = player.offsetTop + 'px';
-            }
-        });
-
-        // --- Twitch Logic ---
-        btnTwitchConnect.addEventListener('click', () => {
-            const channel = twitchChannelInput.value.trim().toLowerCase();
-            let oauth = twitchOauthInput.value.trim();
-
-            twitchMsgUI.classList.add('hidden');
-
-            if (!channel || !oauth) {
-                twitchMsgUI.textContent = "Please enter Channel and OAuth token.";
-                twitchMsgUI.classList.remove('hidden');
-                return;
-            }
-
-            if (!oauth.startsWith('oauth:')) {
-                oauth = 'oauth:' + oauth;
-            }
-
-            if (twitchClient) {
-                twitchClient.disconnect();
-            }
-
-            btnTwitchConnect.textContent = "Connecting...";
-            btnTwitchConnect.classList.add('opacity-75', 'cursor-not-allowed');
-
-            twitchClient = new tmi.Client({
-                options: { debug: false },
-                connection: {
-                    reconnect: true,
-                    secure: true
-                },
-                identity: {
-                    username: channel, 
-                    password: oauth
-                },
-                channels: [ channel ]
-            });
-
-            twitchClient.connect().then(() => {
-                twitchConnected = true;
-                twitchStatus.classList.replace('bg-red-500', 'bg-green-500');
-                twitchStatus.classList.replace('shadow-[0_0_8px_rgba(239,68,68,0.8)]', 'shadow-[0_0_8px_rgba(34,197,94,0.8)]');
+                player.style.left = startLeft + 'px';
+                player.style.top = Math.max(60, topPos) + 'px';
                 
-                btnTwitchConnect.textContent = "Connected!";
-                btnTwitchConnect.classList.replace('bg-purple-600', 'bg-green-600');
-                btnTwitchConnect.classList.replace('hover:bg-purple-500', 'hover:bg-green-500');
-                btnTwitchConnect.classList.remove('opacity-75', 'cursor-not-allowed');
-                
-                twitchOauthInput.type = "password"; // keep secret
-
-                // Announce connection to chat based on active settings
-                let welcomeMsg = "📻 Streamer OS Radio is online! ";
-                if (toggleCommands.checked) welcomeMsg += "Type !song to see what's playing. ";
-                if (toggleRequests.checked) welcomeMsg += "Type !addsong <link> to request a track!";
-                twitchClient.say(channel, welcomeMsg.trim());
-
-            }).catch(err => {
-                console.error(err);
-                twitchMsgUI.textContent = "Failed to connect. Check token.";
-                twitchMsgUI.classList.remove('hidden');
-                
-                twitchStatus.classList.replace('bg-green-500', 'bg-red-500');
-                btnTwitchConnect.textContent = "Connect to Chat";
-                btnTwitchConnect.classList.remove('opacity-75', 'cursor-not-allowed');
-            });
-
-            twitchClient.on('message', (channel, tags, message, self) => {
-                if (self) return; // Ignore own bot messages
-
-                if (toggleCommands.checked) {
-                    const msg = message.toLowerCase();
-                    
-                    // Song Info Command
-                    if (msg === '!song' || msg === '!music' || msg === '!track') {
-                        if (currentTrackIndex !== -1 && tracks[currentTrackIndex]) {
-                            const track = tracks[currentTrackIndex];
-                            twitchClient.say(channel, `🎵 Now Playing: ${track.title} - ${track.artist}`);
-                        } else {
-                            twitchClient.say(channel, `No track is currently playing.`);
-                        }
-                    }
-
-                    // Viewer Song Requests (!addsong)
-                    if (toggleRequests.checked && (msg.startsWith('!addsong ') || msg.startsWith('!sr '))) {
-                        const parts = message.split(' ');
-                        if (parts.length > 1) {
-                            let url = parts[1];
-                            
-                            // Check for YouTube Link
-                            const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
-                            
-                            if (ytMatch) {
-                                // Add YouTube to queue
-                                tracks.push({
-                                    title: "YouTube Request",
-                                    artist: `Req by: ${tags.username}`,
-                                    url: url,
-                                    filename: "youtube_link",
-                                    type: "youtube",
-                                    ytId: ytMatch[1]
-                                });
-                                
-                                renderPlaylist();
-                                twitchClient.say(channel, `@${tags.username}, your YouTube track was added!`);
-                                
-                                if (currentTrackIndex === -1 && tracks.length === 1) loadTrack(0);
-                                
-                            } else if (url.startsWith('http')) {
-                                // Assume Direct Audio Link
-                                tracks.push({
-                                    title: "Viewer Request",
-                                    artist: `Req by: ${tags.username}`,
-                                    url: url,
-                                    filename: "external_link",
-                                    type: "html5"
-                                });
-                                
-                                renderPlaylist();
-                                twitchClient.say(channel, `@${tags.username}, your track was added to the queue!`);
-                                
-                                if (currentTrackIndex === -1 && tracks.length === 1) loadTrack(0);
-                            } else {
-                                twitchClient.say(channel, `@${tags.username}, please provide a valid YouTube or direct audio link.`);
-                            }
-                        }
-                    }
-
-                    // Community DMCA / Veto Command
-                    if (msg === '!dmca' || msg === '!copyright' || msg === '!veto') {
-                        if (currentTrackIndex !== -1) {
-                            currentTrackDmcaVotes.add(tags.username); // Add user to the set (prevents double voting)
-                            
-                            const threshold = parseInt(vetoThresholdInput.value) || 3;
-                            
-                            if (currentTrackDmcaVotes.size >= threshold) {
-                                twitchClient.say(channel, `🚨 Community DMCA trigger hit (${currentTrackDmcaVotes.size}/${threshold} votes)! Skipping track to protect the stream!`);
-                                playNext(false);
-                            }
-                        }
-                    }
-                    
-                    // Broadcaster Remote Control feature
-                    if (tags.badges && tags.badges.broadcaster === '1') {
-                        if (msg === '!skip' || msg === '!next') {
-                            playNext(false);
-                            twitchClient.say(channel, `⏭️ Skipped track!`);
-                        } else if (msg === '!play') {
-                            if (!isPlaying) togglePlay();
-                        } else if (msg === '!pause') {
-                            if (isPlaying) togglePlay();
-                        }
-                    }
-                }
-            });
+                queue.style.left = (startLeft + player.offsetWidth + 20) + 'px';
+                queue.style.top = Math.max(60, topPos) + 'px';
+            }
         });
 
         // --- Audio & File Logic ---
@@ -630,7 +417,7 @@
                 const objectUrl = URL.createObjectURL(file);
                 
                 let title = file.name.replace('.mp3', '');
-                let artist = "Unknown Artist";
+                let artist = "Local File";
                 if (title.includes('-')) {
                     const parts = title.split('-');
                     artist = parts[0].trim();
@@ -646,14 +433,37 @@
                 });
 
                 renderPlaylist();
-                // Auto-play the very first track loaded
                 if (currentTrackIndex === -1 && tracks.length === 1) {
                     loadTrack(0);
                 }
             }
         }
 
-        // 1. Handle standard click-to-upload
+        // Add YouTube via UI input
+        btnAddYt.addEventListener('click', () => {
+            const url = ytLinkInput.value.trim();
+            if (!url) return;
+
+            const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
+            
+            if (ytMatch) {
+                tracks.push({
+                    title: "YouTube Audio",
+                    artist: "Added via URL",
+                    url: url,
+                    filename: "youtube_link",
+                    type: "youtube",
+                    ytId: ytMatch[1]
+                });
+                
+                ytLinkInput.value = '';
+                renderPlaylist();
+                if (currentTrackIndex === -1 && tracks.length === 1) loadTrack(0);
+            } else {
+                alert("Please enter a valid YouTube link.");
+            }
+        });
+
         fileInput.addEventListener('change', (e) => {
             const files = e.target.files;
             if (files.length === 0) return;
@@ -661,30 +471,24 @@
             fileInput.value = ''; 
         });
 
-        // 2. Handle Drag & Drop (Files and Folders)
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             uploadZone.addEventListener(eventName, preventDefaults, false);
         });
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
 
-        // Add visual flair when hovering with a file/folder
         ['dragenter', 'dragover'].forEach(eventName => {
             uploadZone.addEventListener(eventName, () => {
-                uploadZone.classList.add('border-emerald-500', 'bg-gray-800/60');
+                uploadZone.classList.add('border-fuchsia-500', 'bg-purple-900/30');
             }, false);
         });
 
         ['dragleave', 'drop'].forEach(eventName => {
             uploadZone.addEventListener(eventName, () => {
-                uploadZone.classList.remove('border-emerald-500', 'bg-gray-800/60');
+                uploadZone.classList.remove('border-fuchsia-500', 'bg-purple-900/30');
             }, false);
         });
 
-        // Intercept the drop to scan for folders
         uploadZone.addEventListener('drop', (e) => {
             const items = e.dataTransfer.items;
             if (items) {
@@ -692,25 +496,19 @@
                     const item = items[i];
                     if (item.kind === 'file') {
                         const entry = item.webkitGetAsEntry();
-                        if (entry) {
-                            traverseFileTree(entry);
-                        }
+                        if (entry) traverseFileTree(entry);
                     }
                 }
             } else {
-                // Fallback for older browsers
                 const files = e.dataTransfer.files;
                 Array.from(files).forEach(processFile);
             }
         });
 
-        // Recursively walk through folders to find MP3s
         function traverseFileTree(item, path) {
             path = path || "";
             if (item.isFile) {
-                item.file(function(file) {
-                    processFile(file);
-                });
+                item.file(function(file) { processFile(file); });
             } else if (item.isDirectory) {
                 let dirReader = item.createReader();
                 dirReader.readEntries(function(entries) {
@@ -733,7 +531,6 @@
         });
         audio.addEventListener('ended', () => playNext(true));
 
-        // Universal Progress Loop (for YouTube)
         setInterval(() => {
             if (activeEngine === 'youtube' && isPlaying && isYtReady && ytPlayer.getCurrentTime) {
                 const current = ytPlayer.getCurrentTime();
@@ -764,8 +561,6 @@
             if (isYtReady) ytPlayer.setVolume(e.target.value * 100);
         });
 
-        // --- Functions ---
-
         function renderPlaylist() {
             trackCountUI.textContent = `${tracks.length} TRKS`;
             
@@ -782,23 +577,23 @@
             tracks.forEach((track, index) => {
                 const isActive = index === currentTrackIndex;
                 const trackEl = document.createElement('div');
-                trackEl.className = `p-2 rounded-lg flex items-center gap-3 cursor-pointer transition-colors group ${isActive ? 'bg-emerald-500/20 border border-emerald-500/30' : 'hover:bg-gray-700/50 border border-transparent'}`;
+                trackEl.className = `p-2 rounded-lg flex items-center gap-3 cursor-pointer transition-colors group ${isActive ? 'bg-fuchsia-500/20 border border-fuchsia-500/30' : 'hover:bg-purple-900/40 border border-transparent'}`;
                 trackEl.onclick = () => loadTrack(index, true);
 
                 trackEl.innerHTML = `
                     <div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center flex-shrink-0 relative overflow-hidden border border-gray-700">
                         ${isActive && isPlaying ? 
                             `<div class="flex gap-0.5 items-end h-3 w-3">
-                                <div class="w-1 bg-emerald-400 rounded-t animate-[bounce_1s_infinite] h-full"></div>
-                                <div class="w-1 bg-emerald-400 rounded-t animate-[bounce_0.8s_infinite] h-2/3"></div>
-                                <div class="w-1 bg-emerald-400 rounded-t animate-[bounce_1.2s_infinite] h-1/2"></div>
+                                <div class="w-1 bg-fuchsia-400 rounded-t animate-[bounce_1s_infinite] h-full"></div>
+                                <div class="w-1 bg-fuchsia-400 rounded-t animate-[bounce_0.8s_infinite] h-2/3"></div>
+                                <div class="w-1 bg-fuchsia-400 rounded-t animate-[bounce_1.2s_infinite] h-1/2"></div>
                             </div>` 
-                            : `<i class="ph ph-music-notes text-gray-500 group-hover:text-emerald-400 text-xs transition-colors"></i>`
+                            : `<i class="ph ph-music-notes text-gray-500 group-hover:text-fuchsia-400 text-xs transition-colors"></i>`
                         }
                     </div>
                     <div class="flex-grow min-w-0">
-                        <h4 class="font-semibold text-xs truncate ${isActive ? 'text-emerald-400' : 'text-gray-200'}">${track.title}</h4>
-                        <p class="text-[10px] text-gray-500 truncate mt-0.5">${track.artist}</p>
+                        <h4 class="font-semibold text-xs truncate ${isActive ? 'text-fuchsia-400' : 'text-gray-200'}">${track.title}</h4>
+                        <p class="text-[10px] text-gray-400 truncate mt-0.5">${track.artist}</p>
                     </div>
                 `;
                 playlistUI.appendChild(trackEl);
@@ -814,10 +609,9 @@
             trackTitleUI.textContent = track.title;
             trackArtistUI.textContent = track.artist;
             
-            // Switch Engines
             if (track.type === 'youtube') {
                 activeEngine = 'youtube';
-                audio.pause(); // Stop HTML5
+                audio.pause(); 
                 if (isYtReady) {
                     ytPlayer.loadVideoById(track.ytId);
                     ytPlayer.setVolume(volumeSlider.value * 100);
@@ -825,17 +619,13 @@
                 }
             } else {
                 activeEngine = 'html5';
-                if (isYtReady) ytPlayer.stopVideo(); // Stop YouTube
+                if (isYtReady) ytPlayer.stopVideo(); 
                 audio.src = track.url;
                 if (autoPlay || isPlaying) audio.play();
             }
             
-            // Clear DMCA votes for the new track
-            currentTrackDmcaVotes.clear();
-            
-            // Pop animation to album art
-            albumArt.classList.add('scale-105', 'border-emerald-500');
-            setTimeout(() => albumArt.classList.remove('scale-105', 'border-emerald-500'), 200);
+            albumArt.classList.add('scale-105', 'border-fuchsia-500');
+            setTimeout(() => albumArt.classList.remove('scale-105', 'border-fuchsia-500'), 200);
 
             renderPlaylist();
             
@@ -843,14 +633,6 @@
                 audio.play();
                 isPlaying = true;
                 updatePlayIcon();
-            }
-
-            // Trigger Twitch Now Playing Announcement
-            if (twitchConnected && toggleAnnounce.checked) {
-                const channelName = twitchChannelInput.value.trim().toLowerCase();
-                if (channelName && twitchClient) {
-                    twitchClient.say(channelName, `🎵 Now Playing: ${track.title} - ${track.artist}`);
-                }
             }
         }
 
@@ -892,16 +674,16 @@
 
         function toggleShuffle() {
             isShuffle = !isShuffle;
-            shuffleBtn.classList.toggle('text-emerald-400', isShuffle);
+            shuffleBtn.classList.toggle('text-fuchsia-400', isShuffle);
             shuffleBtn.classList.toggle('text-gray-500', !isShuffle);
             if (isShuffle && currentTrackIndex !== -1) {
-                shuffleHistory = [currentTrackIndex]; // Start fresh history
+                shuffleHistory = [currentTrackIndex]; 
             }
         }
 
         function toggleRepeat() {
             isRepeatOne = !isRepeatOne;
-            repeatBtn.classList.toggle('text-emerald-400', isRepeatOne);
+            repeatBtn.classList.toggle('text-fuchsia-400', isRepeatOne);
             repeatBtn.classList.toggle('text-gray-500', !isRepeatOne);
             
             if (isRepeatOne) {
@@ -914,7 +696,6 @@
         function playNext(autoEnded = false) {
             if (tracks.length === 0) return;
             
-            // If the song finished naturally and Repeat One is on, restart it
             if (autoEnded && isRepeatOne) {
                 loadTrack(currentTrackIndex, true);
                 return;
@@ -923,11 +704,9 @@
             let nextIndex;
             
             if (isShuffle && tracks.length > 1) {
-                // Shuffle Logic: Play a random track we haven't played recently
                 let available = tracks.map((_, i) => i).filter(i => !shuffleHistory.includes(i));
                 
                 if (available.length === 0) {
-                    // All tracks played, reset history
                     shuffleHistory = [currentTrackIndex];
                     available = tracks.map((_, i) => i).filter(i => i !== currentTrackIndex);
                 }
@@ -935,7 +714,6 @@
                 nextIndex = available[Math.floor(Math.random() * available.length)];
                 shuffleHistory.push(nextIndex);
             } else {
-                // Normal Next Logic
                 nextIndex = currentTrackIndex + 1;
                 if (nextIndex >= tracks.length) nextIndex = 0; 
             }
@@ -946,7 +724,6 @@
         function playPrev() {
             if (tracks.length === 0) return;
             
-            // Re-start logic for both engines
             let currentSecs = activeEngine === 'html5' ? audio.currentTime : (isYtReady ? ytPlayer.getCurrentTime() : 0);
             if (currentSecs > 3) {
                 if (activeEngine === 'html5') audio.currentTime = 0;
@@ -956,11 +733,9 @@
             
             let prevIndex;
             if (isShuffle && shuffleHistory.length > 1) {
-                // Go back in shuffle history
-                shuffleHistory.pop(); // remove current
-                prevIndex = shuffleHistory[shuffleHistory.length - 1]; // get previous
+                shuffleHistory.pop(); 
+                prevIndex = shuffleHistory[shuffleHistory.length - 1]; 
             } else {
-                // Normal Prev Logic
                 prevIndex = currentTrackIndex - 1;
                 if (prevIndex < 0) prevIndex = tracks.length - 1;
             }
@@ -969,7 +744,7 @@
         }
 
         function updateProgress() {
-            if (activeEngine !== 'html5') return; // Handled by interval for YT
+            if (activeEngine !== 'html5') return; 
             const percent = (audio.currentTime / audio.duration) * 100;
             progressBar.style.width = `${percent}%`;
             timeCurrent.textContent = formatTime(audio.currentTime);
