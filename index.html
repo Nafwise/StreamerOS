@@ -20,17 +20,15 @@
                 radial-gradient(circle at 50% 80%, rgba(134, 25, 143, 0.3) 0%, transparent 50%);
         }
 
-        /* Starry Background */
-        .stars {
-            background-image: 
-                radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0));
-            background-repeat: repeat;
-            background-size: 200px 200px;
-            position: absolute; inset: 0; z-index: 0; opacity: 0.5; pointer-events: none;
+        /* Synapse Canvas Background */
+        .synapse-canvas {
+            position: absolute; 
+            inset: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 0; 
+            opacity: 0.6; /* Kept slightly dim so it doesn't overpower the UI */
+            pointer-events: none; /* Crucial: Lets you click through it to drag windows */
         }
 
         /* Scrollbar */
@@ -192,8 +190,8 @@
 </head>
 <body>
 
-    <!-- Starry background layer -->
-    <div class="stars"></div>
+    <!-- Synapse Trippy Background -->
+    <canvas id="synapse-canvas" class="synapse-canvas"></canvas>
 
     <!-- Hidden Audio Element (No YouTube API needed) -->
     <audio id="audio-player"></audio>
@@ -356,6 +354,127 @@
         }
 
         initDiscord();
+
+        // --- SYNAPSE VISUAL ENGINE (Background) ---
+        const synCanvas = document.getElementById('synapse-canvas');
+        const synCtx = synCanvas.getContext('2d');
+        let synWidth, synHeight;
+        let synNodes = [];
+        let synSignals = [];
+        const maxNodes = 60; // Optimized for background performance
+        const connectionDistance = 150;
+        
+        // Colors updated to match Tavern Theme (Purples, Fuchsias, Cyans)
+        const synColors = ['#9333ea', '#d946ef', '#22d3ee', '#a855f7'];
+
+        function initSynapse() {
+            synWidth = synCanvas.width = window.innerWidth;
+            synHeight = synCanvas.height = window.innerHeight;
+            synNodes = [];
+            synSignals = [];
+            for (let i = 0; i < maxNodes; i++) {
+                synNodes.push(new SynNode());
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            synWidth = synCanvas.width = window.innerWidth;
+            synHeight = synCanvas.height = window.innerHeight;
+        });
+
+        class SynNode {
+            constructor() {
+                this.x = Math.random() * synWidth;
+                this.y = Math.random() * synHeight;
+                this.vx = (Math.random() - 0.5) * 0.4; // Slow drifting
+                this.vy = (Math.random() - 0.5) * 0.4;
+                this.radius = Math.random() * 2 + 1;
+                this.color = synColors[Math.floor(Math.random() * synColors.length)];
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > synWidth) this.vx *= -1;
+                if (this.y < 0 || this.y > synHeight) this.vy *= -1;
+            }
+            draw() {
+                synCtx.beginPath();
+                synCtx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                synCtx.fillStyle = this.color;
+                synCtx.fill();
+            }
+        }
+
+        // AutoPilot: Spawn random signals over time
+        setInterval(() => {
+            if (synNodes.length < 2) return;
+            let n1 = synNodes[Math.floor(Math.random() * synNodes.length)];
+            let n2 = synNodes[Math.floor(Math.random() * synNodes.length)];
+            if (n1 !== n2) {
+                // Only send signal if they are close enough
+                let dx = n1.x - n2.x;
+                let dy = n1.y - n2.y;
+                if (Math.sqrt(dx * dx + dy * dy) < connectionDistance * 1.5) {
+                    synSignals.push({ x: n1.x, y: n1.y, target: n2, progress: 0, color: n1.color });
+                }
+            }
+        }, 300); // Pulse every 300ms
+
+        function animateSynapse() {
+            synCtx.clearRect(0, 0, synWidth, synHeight);
+
+            // Update and draw nodes
+            synNodes.forEach(node => {
+                node.update();
+                node.draw();
+            });
+
+            // Draw neural connections
+            synCtx.lineWidth = 1;
+            for (let i = 0; i < synNodes.length; i++) {
+                for (let j = i + 1; j < synNodes.length; j++) {
+                    let dx = synNodes[i].x - synNodes[j].x;
+                    let dy = synNodes[i].y - synNodes[j].y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < connectionDistance) {
+                        synCtx.beginPath();
+                        synCtx.moveTo(synNodes[i].x, synNodes[i].y);
+                        synCtx.lineTo(synNodes[j].x, synNodes[j].y);
+                        let alpha = 1 - (dist / connectionDistance);
+                        // Subtle purple/pink lines matching theme
+                        synCtx.strokeStyle = `rgba(217, 70, 239, ${alpha * 0.3})`;
+                        synCtx.stroke();
+                    }
+                }
+            }
+
+            // Draw traveling signals/pulses
+            for (let i = synSignals.length - 1; i >= 0; i--) {
+                let s = synSignals[i];
+                s.progress += 0.015; // Speed of pulse
+                if (s.progress >= 1) {
+                    synSignals.splice(i, 1);
+                    continue;
+                }
+                let curX = s.x + (s.target.x - s.x) * s.progress;
+                let curY = s.y + (s.target.y - s.y) * s.progress;
+
+                synCtx.beginPath();
+                synCtx.arc(curX, curY, 2.5, 0, Math.PI * 2);
+                synCtx.fillStyle = '#ffffff';
+                synCtx.shadowBlur = 10;
+                synCtx.shadowColor = s.color;
+                synCtx.fill();
+                synCtx.shadowBlur = 0; // reset
+            }
+
+            requestAnimationFrame(animateSynapse);
+        }
+
+        // Start Background Engine
+        initSynapse();
+        animateSynapse();
+
 
         // --- State ---
         let tracks = [];
