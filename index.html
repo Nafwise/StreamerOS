@@ -4,21 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Animus Tavern Music Player</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <!-- Add YouTube IFrame API -->
-    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
-        body {
-            /* Prevent body scrolling while dragging */
-            overflow: hidden;
-            background-color: #030014;
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.4) 0%, transparent 50%), /* Deep Purple */
-                radial-gradient(circle at 85% 30%, rgba(14, 116, 144, 0.4) 0%, transparent 50%), /* Cyan */
-                radial-gradient(circle at 50% 80%, rgba(134, 25, 143, 0.3) 0%, transparent 50%); /* Magenta */
-        }
+        /* --- Zero-Dependency Pure CSS --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         
+        body {
+            background-color: #030014;
+            color: #f3f4f6;
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            user-select: none; /* Prevent text selection while dragging */
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(14, 116, 144, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 50% 80%, rgba(134, 25, 143, 0.3) 0%, transparent 50%);
+        }
+
+        /* Starry Background */
         .stars {
             background-image: 
                 radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
@@ -28,155 +30,263 @@
                 radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0));
             background-repeat: repeat;
             background-size: 200px 200px;
+            position: absolute; inset: 0; z-index: 0; opacity: 0.5; pointer-events: none;
         }
 
-        /* Custom scrollbar for the tracklist */
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #d946ef; /* fuchsia-500 */ }
+        ::-webkit-scrollbar-thumb:hover { background: #d946ef; }
+
+        /* Utility Classes */
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .gap-1 { gap: 4px; }
+        .gap-2 { gap: 8px; }
+        .gap-3 { gap: 12px; }
+        .gap-4 { gap: 16px; }
+        .gap-6 { gap: 24px; }
+        .w-full { width: 100%; }
+        .text-center { text-align: center; }
+        .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         
+        .text-xs { font-size: 12px; }
+        .text-sm { font-size: 14px; }
+        .text-2xl { font-size: 24px; font-weight: bold; }
+        .font-mono { font-family: monospace; }
+        .font-semibold { font-weight: 600; }
+        
+        .text-gray { color: #9ca3af; }
+        .text-fuchsia { color: #d946ef; }
+        .text-purple { color: #a855f7; }
+        .text-white { color: #ffffff; }
+
+        /* Top Bar */
+        .top-bar {
+            position: fixed; top: 0; left: 0; width: 100%;
+            background: rgba(3, 0, 20, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(88, 28, 135, 0.5);
+            padding: 8px 16px;
+            z-index: 100;
+        }
+
+        /* Glass Windows */
         .glass-modal {
             background: rgba(15, 10, 25, 0.65);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(168, 85, 247, 0.15); /* subtle purple border */
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 20px rgba(168, 85, 247, 0.1); /* outer glow */
-            position: absolute; /* Crucial for dragging */
+            border: 1px solid rgba(168, 85, 247, 0.15);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 20px rgba(168, 85, 247, 0.1);
+            position: absolute;
+            display: flex; flex-direction: column;
+            width: 380px;
         }
 
         .drag-handle {
-            touch-action: none; /* Prevent browser handling of touch gestures on handle */
+            background: rgba(88, 28, 135, 0.3);
+            padding: 12px 16px;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 1px solid rgba(126, 34, 206, 0.5);
+            cursor: grab;
+        }
+        .drag-handle:active { cursor: grabbing; }
+
+        .window-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* Player UI */
+        .player-content { padding: 24px; position: relative; }
+        .glow-bg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 192px; height: 192px; background: rgba(217, 70, 239, 0.2);
+            border-radius: 50%; filter: blur(40px); pointer-events: none;
         }
 
-        input[type="range"] {
-            accent-color: #d946ef; /* Fuchsia */
+        .album-art {
+            width: 192px; height: 192px;
+            background: rgba(10, 5, 20, 0.8);
+            border-radius: 16px;
+            border: 1px solid rgba(88, 28, 135, 0.5);
+            margin: 0 auto 24px auto;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s, border-color 0.2s;
+            position: relative; z-index: 10;
         }
+        .album-art.pop { transform: scale(1.05); border-color: #d946ef; }
+
+        /* Progress Bar */
+        .progress-container { flex-grow: 1; height: 6px; background: rgba(55, 65, 81, 0.5); border-radius: 4px; cursor: pointer; position: relative; }
+        .progress-bar { position: absolute; top: 0; left: 0; height: 100%; border-radius: 4px; background: linear-gradient(to right, #9333ea, #d946ef, #22d3ee); width: 0%; transition: width 0.1s linear; }
+
+        /* Buttons */
+        button { background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; outline: none; }
+        .icon-btn:hover { color: #ffffff; transform: scale(1.1); }
+        .icon-btn.active { color: #d946ef; }
+        
+        .btn-play {
+            width: 56px; height: 56px; border-radius: 50%;
+            background: linear-gradient(135deg, #9333ea, #d946ef);
+            color: white; box-shadow: 0 10px 15px -3px rgba(217, 70, 239, 0.3);
+        }
+        .btn-play:hover { transform: scale(1.05); }
+
+        /* Volume Slider */
+        input[type="range"] { -webkit-appearance: none; width: 96px; height: 4px; background: #374151; border-radius: 2px; outline: none; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #d946ef; cursor: pointer; }
+
+        /* Queue UI */
+        .queue-content { padding: 16px; display: flex; flex-direction: column; gap: 16px; height: calc(100% - 45px); }
+        
+        .upload-zone {
+            border: 1px dashed rgba(156, 163, 175, 0.5);
+            border-radius: 12px; padding: 16px; text-align: center;
+            background: rgba(31, 41, 55, 0.3);
+            transition: all 0.2s; position: relative; flex-shrink: 0;
+        }
+        .upload-zone:hover, .upload-zone.dragover { border-color: #d946ef; background: rgba(88, 28, 135, 0.3); color: white;}
+        .file-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10; }
+
+        .playlist-container {
+            background: rgba(31, 41, 55, 0.2); border-radius: 12px;
+            border: 1px solid rgba(55, 65, 81, 0.3);
+            flex-grow: 1; overflow-y: auto; padding: 8px;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+
+        .track-item {
+            padding: 8px; border-radius: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background 0.2s; border: 1px solid transparent;
+        }
+        .track-item:hover { background: rgba(55, 65, 81, 0.5); }
+        .track-item.active { background: rgba(217, 70, 239, 0.1); border-color: rgba(217, 70, 239, 0.3); }
+        
+        .track-icon { width: 32px; height: 32px; background: #1f2937; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px solid #374151; flex-shrink: 0; }
+        
+        .active-bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
+        .active-bars div { width: 3px; background: #d946ef; border-radius: 2px 2px 0 0; animation: bounce 1s infinite; }
+        .active-bars div:nth-child(2) { animation-duration: 0.8s; }
+        .active-bars div:nth-child(3) { animation-duration: 1.2s; }
+        @keyframes bounce { 0%, 100% { height: 40%; } 50% { height: 100%; } }
+
+        .empty-state { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #6b7280; }
     </style>
 </head>
-<body class="text-white min-h-screen font-sans selection:bg-fuchsia-500 selection:text-white relative w-full h-full">
+<body>
 
     <!-- Starry background layer -->
-    <div class="stars pointer-events-none absolute inset-0 z-0 opacity-50"></div>
+    <div class="stars"></div>
 
-    <!-- Hidden Audio Elements -->
+    <!-- Hidden Audio Element (No YouTube API needed) -->
     <audio id="audio-player"></audio>
-    <div id="yt-player" class="hidden absolute pointer-events-none opacity-0"></div>
 
     <!-- Top Status Bar -->
-    <div class="fixed top-0 left-0 w-full bg-[#030014]/80 backdrop-blur-md border-b border-purple-900/50 p-2 flex justify-between items-center z-0 px-4 text-sm text-gray-400">
+    <div class="top-bar flex justify-between items-center text-sm text-gray">
         <div class="flex items-center gap-2">
-            <i class="ph-fill ph-discord-logo text-purple-400 text-lg"></i>
-            <span class="font-semibold text-gray-200">Animus Tavern Music Player</span>
-            <span class="opacity-50 hidden sm:inline">|</span>
-            <span id="discord-status" class="text-yellow-400 text-xs animate-pulse">Connecting to Discord SDK...</span>
+            <!-- Discord SVG Icon -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
+            <span class="font-semibold text-white">Animus Tavern Music Player</span>
+            <span style="opacity: 0.5; margin: 0 4px;">|</span>
+            <span id="discord-status" style="color: #fbbf24;" class="text-xs pulse">Connecting to Discord SDK...</span>
         </div>
         <div id="clock" class="font-mono">00:00</div>
     </div>
 
     <!-- MODAL 1: THE PLAYER -->
-    <div id="modal-player" class="glass-modal rounded-2xl w-[340px] md:w-[400px] flex flex-col z-10" style="top: 80px; left: 40px;">
-        <!-- Drag Handle -->
-        <div class="drag-handle bg-purple-900/30 p-3 rounded-t-2xl border-b border-purple-700/50 flex justify-between items-center cursor-grab hover:bg-purple-800/40 transition-colors">
-            <div class="flex items-center gap-2 text-gray-300">
-                <i class="ph ph-dots-six-vertical text-lg opacity-50"></i>
+    <div id="modal-player" class="glass-modal" style="top: 80px; left: 40px; z-index: 10;">
+        <div class="drag-handle flex justify-between items-center">
+            <div class="flex items-center gap-2 text-gray">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" opacity="0.5"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
                 <span class="font-semibold text-sm tracking-wide">PLAYER</span>
             </div>
-            <div class="flex gap-1.5">
-                <div class="w-3 h-3 rounded-full bg-gray-600"></div>
-                <div class="w-3 h-3 rounded-full bg-gray-600"></div>
-                <div class="w-3 h-3 rounded-full bg-fuchsia-500 animate-pulse"></div>
+            <div class="flex gap-1">
+                <div class="window-dot" style="background: #4b5563"></div>
+                <div class="window-dot" style="background: #4b5563"></div>
+                <div class="window-dot pulse" style="background: #d946ef"></div>
             </div>
         </div>
 
-        <!-- Player Content -->
-        <div class="p-6 flex flex-col items-center relative overflow-hidden">
-            <!-- decorative background glow -->
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-fuchsia-600/20 rounded-full blur-3xl pointer-events-none"></div>
-
-            <div id="album-art" class="w-48 h-48 bg-[#0a0514]/80 rounded-2xl shadow-2xl flex items-center justify-center mb-6 border border-purple-900/50 transition-transform duration-300 relative z-10">
-                <i class="ph ph-vinyl-record text-7xl text-gray-600"></i>
+        <div class="player-content flex flex-col items-center">
+            <div class="glow-bg"></div>
+            
+            <div id="album-art" class="album-art">
+                <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
             </div>
 
-            <div class="text-center w-full relative z-10">
-                <h2 id="track-title" class="text-2xl font-bold truncate mb-1">No Track Loaded</h2>
-                <p id="track-artist" class="text-fuchsia-400 text-sm mb-6 truncate font-medium">Awaiting Input...</p>
+            <div class="w-full text-center" style="position: relative; z-index: 10;">
+                <h2 id="track-title" class="text-2xl font-bold truncate" style="margin-bottom: 4px;">No Track Loaded</h2>
+                <p id="track-artist" class="text-fuchsia text-sm truncate font-semibold" style="margin-bottom: 24px;">Awaiting Input...</p>
 
                 <!-- Progress Bar -->
-                <div class="flex items-center gap-3 mb-6 text-xs text-gray-400 font-mono">
+                <div class="flex items-center gap-3 text-xs text-gray font-mono" style="margin-bottom: 24px;">
                     <span id="time-current">0:00</span>
-                    <div class="flex-grow h-1.5 bg-gray-700/50 rounded-full cursor-pointer relative" id="progress-container">
-                        <div id="progress-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-600 via-fuchsia-500 to-cyan-400 rounded-full w-0 transition-all duration-75"></div>
+                    <div class="progress-container" id="progress-container">
+                        <div class="progress-bar" id="progress-bar"></div>
                     </div>
                     <span id="time-total">0:00</span>
                 </div>
 
                 <!-- Controls -->
-                <div class="flex items-center justify-center gap-4 md:gap-6">
-                    <button id="btn-shuffle" class="text-gray-500 hover:text-white transition-colors p-2" title="Shuffle">
-                        <i class="ph-bold ph-shuffle text-xl"></i>
+                <div class="flex items-center justify-center gap-6">
+                    <button id="btn-shuffle" class="text-gray icon-btn" title="Shuffle">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
                     </button>
-                    <button id="btn-prev" class="text-gray-400 hover:text-white transition-transform hover:scale-110 p-2">
-                        <i class="ph-fill ph-skip-back text-2xl"></i>
+                    <button id="btn-prev" class="text-gray icon-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line></svg>
                     </button>
-                    <button id="btn-play" class="bg-gradient-to-br from-purple-600 to-fuchsia-500 hover:from-purple-500 hover:to-fuchsia-400 text-white w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg shadow-fuchsia-500/30">
-                        <i class="ph-fill ph-play text-2xl ml-1" id="play-icon"></i>
+                    <button id="btn-play" class="btn-play">
+                        <span id="play-icon-wrapper" style="margin-left: 2px;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </span>
                     </button>
-                    <button id="btn-next" class="text-gray-400 hover:text-white transition-transform hover:scale-110 p-2">
-                        <i class="ph-fill ph-skip-forward text-2xl"></i>
+                    <button id="btn-next" class="text-gray icon-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line></svg>
                     </button>
-                    <button id="btn-repeat" class="text-gray-500 hover:text-white transition-colors p-2" title="Repeat One">
-                        <i class="ph-bold ph-repeat text-xl"></i>
+                    <button id="btn-repeat" class="text-gray icon-btn" title="Repeat">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
                     </button>
                 </div>
                 
                 <!-- Volume -->
-                <div class="flex items-center justify-center gap-3 mt-6">
-                    <i class="ph ph-speaker-low text-gray-500"></i>
-                    <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.7" class="w-24 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
-                    <i class="ph ph-speaker-high text-gray-500"></i>
+                <div class="flex items-center justify-center gap-3 text-gray" style="margin-top: 24px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/></svg>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.7">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 16.5c1.3-1.8 1.3-4.2 0-6M19 19.5c3.2-4.5 3.2-10.5 0-15"/></svg>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- MODAL 2: QUEUE & UPLOAD -->
-    <div id="modal-queue" class="glass-modal rounded-2xl w-[340px] md:w-[380px] h-[420px] flex flex-col z-10" style="top: 80px; right: 40px;">
-        <!-- Drag Handle -->
-        <div class="drag-handle bg-purple-900/30 p-3 rounded-t-2xl border-b border-purple-700/50 flex justify-between items-center cursor-grab hover:bg-purple-800/40 transition-colors">
-            <div class="flex items-center gap-2 text-gray-300">
-                <i class="ph ph-dots-six-vertical text-lg opacity-50"></i>
+    <div id="modal-queue" class="glass-modal" style="top: 80px; right: 40px; height: 440px; z-index: 10;">
+        <div class="drag-handle flex justify-between items-center">
+            <div class="flex items-center gap-2 text-gray">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" opacity="0.5"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
                 <span class="font-semibold text-sm tracking-wide">QUEUE & UPLOAD</span>
             </div>
-            <span id="track-count" class="text-xs font-mono bg-gray-700 px-2 py-0.5 rounded text-gray-300">0 TRKS</span>
+            <span id="track-count" class="text-xs font-mono text-gray" style="background: #374151; padding: 2px 6px; border-radius: 4px;">0 TRKS</span>
         </div>
 
-        <div class="flex flex-col flex-grow overflow-hidden p-4 gap-4">
-            
+        <div class="queue-content">
             <!-- Upload Zone -->
-            <div id="upload-zone" class="border border-dashed border-gray-600 hover:border-fuchsia-500 bg-gray-800/30 rounded-xl p-4 text-center cursor-pointer transition-colors relative group shrink-0">
-                <input type="file" id="file-input" accept="audio/mpeg, audio/mp3" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                <i class="ph ph-upload-simple text-2xl text-gray-500 group-hover:text-fuchsia-400 mb-1 transition-colors"></i>
-                <p class="text-sm text-gray-300 font-medium">Drop MP3s or Folders here</p>
-                <p class="text-xs text-gray-500">Supports multiple files & folders</p>
-            </div>
-
-            <!-- YouTube Link Add -->
-            <div class="flex gap-2 shrink-0">
-                <input type="text" id="yt-link-input" placeholder="Paste YouTube link here..." class="flex-grow bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-fuchsia-500 transition-colors">
-                <button id="btn-add-yt" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors">
-                    Add
-                </button>
+            <div id="upload-zone" class="upload-zone">
+                <input type="file" id="file-input" accept="audio/mpeg, audio/mp3, audio/wav" multiple class="file-input">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 8px auto;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                <p class="text-sm font-semibold text-gray" style="margin-bottom: 4px;">Drop MP3s or Folders here</p>
+                <p class="text-xs text-gray" style="opacity: 0.7;">Supports multiple files & folders</p>
             </div>
 
             <!-- Playlist -->
-            <div class="bg-gray-800/20 rounded-xl flex-grow overflow-hidden flex flex-col border border-gray-700/30">
-                <div id="playlist" class="overflow-y-auto p-2 flex flex-col gap-1 h-full min-h-[140px]">
-                    <!-- Empty State -->
-                    <div class="h-full flex flex-col items-center justify-center text-gray-500 p-4 text-center">
-                        <i class="ph ph-music-notes-simple text-4xl mb-2 opacity-50"></i>
-                        <p class="text-sm">Queue is empty</p>
-                    </div>
+            <div class="playlist-container" id="playlist">
+                <div class="empty-state">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.5;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    <p class="text-sm">Queue is empty</p>
                 </div>
             </div>
         </div>
@@ -184,52 +294,35 @@
 
     <!-- Type module allows us to use modern imports like the Discord SDK -->
     <script type="module">
-        // --- 1. Discord Embedded App SDK Integration ---
         import { DiscordSDK } from 'https://esm.sh/@discord/embedded-app-sdk';
 
-        // NOTE: Before deploying, replace this with your actual Discord Application Client ID!
         const DISCORD_CLIENT_ID = '1478929818694189076';
-        
         let discordSdk;
 
         async function initDiscord() {
             try {
-                // The SDK throws an error if it's not opened inside a Discord iframe (missing frame_id)
-                // This check prevents it from crashing when you test it locally in your standard browser.
                 const urlParams = new URLSearchParams(window.location.search);
                 if (!urlParams.get('frame_id')) {
                     throw new Error("Missing frame_id. Running in browser instead of Discord.");
                 }
 
-                // Initialize the SDK
                 discordSdk = new DiscordSDK(DISCORD_CLIENT_ID);
-                
-                // This command tells the Discord client your activity has loaded and is ready to be shown
                 await discordSdk.ready();
                 
-                console.log("Discord SDK Handshake Complete!");
-                
-                // Update top bar UI
                 const statusSpan = document.getElementById('discord-status');
                 statusSpan.textContent = "Activity Ready";
-                statusSpan.classList.replace('text-yellow-400', 'text-green-400');
-                statusSpan.classList.remove('animate-pulse');
-
-                // TODO: Here is where you would handle authentication if you need to know exactly 
-                // who the user is, or fetch the channel ID for a multiplayer backend server.
-
+                statusSpan.style.color = "#4ade80"; // green
+                statusSpan.classList.remove('pulse');
             } catch (error) {
                 console.warn("Discord SDK Initialization Skipped:", error.message);
                 const statusSpan = document.getElementById('discord-status');
                 statusSpan.textContent = "Running Outside Discord";
-                statusSpan.classList.replace('text-yellow-400', 'text-gray-500');
-                statusSpan.classList.remove('animate-pulse');
+                statusSpan.style.color = "#9ca3af"; // gray
+                statusSpan.classList.remove('pulse');
             }
         }
 
-        // Start the handshake immediately
         initDiscord();
-
 
         // --- State ---
         let tracks = [];
@@ -239,44 +332,11 @@
         let isRepeatOne = false;
         let shuffleHistory = [];
         let zIndexCounter = 10;
-        
-        // --- Player Engines ---
-        let activeEngine = 'html5'; // 'html5' or 'youtube'
-        let ytPlayer = null;
-        let isYtReady = false;
-
-        // Initialize YouTube Player globally since the API calls it on the window object
-        window.onYouTubeIframeAPIReady = function() {
-            ytPlayer = new YT.Player('yt-player', {
-                height: '10',
-                width: '10',
-                playerVars: { 'controls': 0, 'disablekb': 1, 'playsinline': 1 },
-                events: {
-                    'onReady': () => { isYtReady = true; },
-                    'onStateChange': onYtStateChange
-                }
-            });
-        };
-
-        function onYtStateChange(event) {
-            if (activeEngine !== 'youtube') return;
-            
-            if (event.data === YT.PlayerState.ENDED) {
-                playNext(true);
-            } else if (event.data === YT.PlayerState.PLAYING) {
-                isPlaying = true;
-                updatePlayIcon();
-                timeTotal.textContent = formatTime(ytPlayer.getDuration());
-            } else if (event.data === YT.PlayerState.PAUSED) {
-                isPlaying = false;
-                updatePlayIcon();
-            }
-        }
 
         // --- DOM Elements ---
         const audio = document.getElementById('audio-player');
         const playBtn = document.getElementById('btn-play');
-        const playIcon = document.getElementById('play-icon');
+        const playIconWrapper = document.getElementById('play-icon-wrapper');
         const prevBtn = document.getElementById('btn-prev');
         const nextBtn = document.getElementById('btn-next');
         const progressBar = document.getElementById('progress-bar');
@@ -295,8 +355,12 @@
         const fileInput = document.getElementById('file-input');
         const playlistUI = document.getElementById('playlist');
         const trackCountUI = document.getElementById('track-count');
-        const ytLinkInput = document.getElementById('yt-link-input');
-        const btnAddYt = document.getElementById('btn-add-yt');
+        const uploadZone = document.getElementById('upload-zone');
+
+        // SVG Constants
+        const iconPlay = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+        const iconPause = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+        const iconMusic = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
 
         // --- Clock Update ---
         setInterval(() => {
@@ -304,7 +368,6 @@
             document.getElementById('clock').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }, 1000);
 
-        // --- Initialization ---
         audio.volume = volumeSlider.value;
 
         // --- Dragging Logic ---
@@ -316,14 +379,8 @@
             modal.addEventListener('mousedown', () => bringToFront(modal));
             modal.addEventListener('touchstart', () => bringToFront(modal), {passive: true});
 
-            handle.addEventListener('mousedown', (e) => {
-                if (e.target.closest('.no-drag')) return;
-                dragStart(e);
-            });
-            handle.addEventListener('touchstart', (e) => {
-                if (e.target.closest('.no-drag')) return;
-                dragStart(e);
-            }, {passive: false});
+            handle.addEventListener('mousedown', dragStart);
+            handle.addEventListener('touchstart', dragStart, {passive: false});
 
             function bringToFront(element) {
                 zIndexCounter++;
@@ -332,7 +389,6 @@
 
             function dragStart(e) {
                 bringToFront(modal);
-                
                 if (e.type === 'touchstart') {
                     pos3 = e.touches[0].clientX;
                     pos4 = e.touches[0].clientY;
@@ -345,12 +401,10 @@
                     document.onmouseup = dragEnd;
                     document.onmousemove = dragAction;
                 }
-                handle.style.cursor = 'grabbing';
             }
 
             function dragAction(e) {
                 if (e.type === 'touchmove') e.preventDefault();
-
                 let clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
                 let clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
 
@@ -362,8 +416,7 @@
                 let newTop = modal.offsetTop - pos2;
                 let newLeft = modal.offsetLeft - pos1;
 
-                const headerHeight = 40; 
-                if(newTop < headerHeight) newTop = headerHeight;
+                if(newTop < 40) newTop = 40;
                 if(newTop > window.innerHeight - 50) newTop = window.innerHeight - 50;
                 
                 modal.style.top = newTop + "px";
@@ -375,14 +428,12 @@
                 document.onmousemove = null;
                 document.removeEventListener('touchmove', dragAction);
                 document.removeEventListener('touchend', dragEnd);
-                handle.style.cursor = 'grab';
             }
         }
 
         makeDraggable('modal-player');
         makeDraggable('modal-queue');
 
-        // Responsive initial positioning
         window.addEventListener('load', () => {
             const player = document.getElementById('modal-player');
             const queue = document.getElementById('modal-queue');
@@ -396,7 +447,6 @@
                 queue.style.transform = 'translateX(-50%)';
                 queue.style.top = '120px';
             } else {
-                // Center them together side by side
                 const totalWidth = player.offsetWidth + 20 + queue.offsetWidth;
                 const startLeft = (window.innerWidth - totalWidth) / 2;
                 const topPos = (window.innerHeight - queue.offsetHeight) / 2;
@@ -410,14 +460,14 @@
         });
 
         // --- Audio & File Logic ---
-        const uploadZone = document.getElementById('upload-zone');
-
         function processFile(file) {
-            if (file.type === "audio/mpeg" || file.name.toLowerCase().endsWith(".mp3")) {
+            if (file.type.startsWith("audio/") || file.name.toLowerCase().match(/\.(mp3|wav|ogg)$/)) {
                 const objectUrl = URL.createObjectURL(file);
                 
-                let title = file.name.replace('.mp3', '');
+                let title = file.name.replace(/\.[^/.]+$/, ""); // strip extension
                 let artist = "Local File";
+                
+                // Smart parsing: Try to detect "(Backing vocals)" or standard "Artist - Title" format
                 if (title.includes('-')) {
                     const parts = title.split('-');
                     artist = parts[0].trim();
@@ -428,8 +478,7 @@
                     title: title,
                     artist: artist,
                     url: objectUrl,
-                    filename: file.name,
-                    type: "html5"
+                    filename: file.name
                 });
 
                 renderPlaylist();
@@ -439,31 +488,6 @@
             }
         }
 
-        // Add YouTube via UI input
-        btnAddYt.addEventListener('click', () => {
-            const url = ytLinkInput.value.trim();
-            if (!url) return;
-
-            const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
-            
-            if (ytMatch) {
-                tracks.push({
-                    title: "YouTube Audio",
-                    artist: "Added via URL",
-                    url: url,
-                    filename: "youtube_link",
-                    type: "youtube",
-                    ytId: ytMatch[1]
-                });
-                
-                ytLinkInput.value = '';
-                renderPlaylist();
-                if (currentTrackIndex === -1 && tracks.length === 1) loadTrack(0);
-            } else {
-                alert("Please enter a valid YouTube link.");
-            }
-        });
-
         fileInput.addEventListener('change', (e) => {
             const files = e.target.files;
             if (files.length === 0) return;
@@ -472,21 +496,15 @@
         });
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, preventDefaults, false);
+            uploadZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
         });
 
-        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-
         ['dragenter', 'dragover'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, () => {
-                uploadZone.classList.add('border-fuchsia-500', 'bg-purple-900/30');
-            }, false);
+            uploadZone.addEventListener(eventName, () => uploadZone.classList.add('dragover'), false);
         });
 
         ['dragleave', 'drop'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, () => {
-                uploadZone.classList.remove('border-fuchsia-500', 'bg-purple-900/30');
-            }, false);
+            uploadZone.addEventListener(eventName, () => uploadZone.classList.remove('dragover'), false);
         });
 
         uploadZone.addEventListener('drop', (e) => {
@@ -527,38 +545,19 @@
         
         audio.addEventListener('timeupdate', updateProgress);
         audio.addEventListener('loadedmetadata', () => {
-            if (activeEngine === 'html5') timeTotal.textContent = formatTime(audio.duration);
+            timeTotal.textContent = formatTime(audio.duration);
         });
         audio.addEventListener('ended', () => playNext(true));
 
-        setInterval(() => {
-            if (activeEngine === 'youtube' && isPlaying && isYtReady && ytPlayer.getCurrentTime) {
-                const current = ytPlayer.getCurrentTime();
-                const duration = ytPlayer.getDuration();
-                if (duration > 0) {
-                    const percent = (current / duration) * 100;
-                    progressBar.style.width = `${percent}%`;
-                    timeCurrent.textContent = formatTime(current);
-                }
-            }
-        }, 500);
-
         progressContainer.addEventListener('click', (e) => {
-            if (tracks.length === 0) return;
+            if (tracks.length === 0 || isNaN(audio.duration)) return;
             const width = progressContainer.clientWidth;
             const clickX = e.offsetX;
-            
-            if (activeEngine === 'html5') {
-                audio.currentTime = (clickX / width) * audio.duration;
-            } else if (activeEngine === 'youtube' && isYtReady) {
-                const duration = ytPlayer.getDuration();
-                ytPlayer.seekTo((clickX / width) * duration, true);
-            }
+            audio.currentTime = (clickX / width) * audio.duration;
         });
 
         volumeSlider.addEventListener('input', (e) => {
             audio.volume = e.target.value;
-            if (isYtReady) ytPlayer.setVolume(e.target.value * 100);
         });
 
         function renderPlaylist() {
@@ -566,8 +565,8 @@
             
             if (tracks.length === 0) {
                 playlistUI.innerHTML = `
-                    <div class="h-full flex flex-col items-center justify-center text-gray-500 p-4 text-center">
-                        <i class="ph ph-music-notes-simple text-4xl mb-2 opacity-50"></i>
+                    <div class="empty-state">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.5;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                         <p class="text-sm">Queue is empty</p>
                     </div>`;
                 return;
@@ -577,23 +576,19 @@
             tracks.forEach((track, index) => {
                 const isActive = index === currentTrackIndex;
                 const trackEl = document.createElement('div');
-                trackEl.className = `p-2 rounded-lg flex items-center gap-3 cursor-pointer transition-colors group ${isActive ? 'bg-fuchsia-500/20 border border-fuchsia-500/30' : 'hover:bg-purple-900/40 border border-transparent'}`;
+                trackEl.className = `track-item ${isActive ? 'active' : ''}`;
                 trackEl.onclick = () => loadTrack(index, true);
 
                 trackEl.innerHTML = `
-                    <div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center flex-shrink-0 relative overflow-hidden border border-gray-700">
+                    <div class="track-icon">
                         ${isActive && isPlaying ? 
-                            `<div class="flex gap-0.5 items-end h-3 w-3">
-                                <div class="w-1 bg-fuchsia-400 rounded-t animate-[bounce_1s_infinite] h-full"></div>
-                                <div class="w-1 bg-fuchsia-400 rounded-t animate-[bounce_0.8s_infinite] h-2/3"></div>
-                                <div class="w-1 bg-fuchsia-400 rounded-t animate-[bounce_1.2s_infinite] h-1/2"></div>
-                            </div>` 
-                            : `<i class="ph ph-music-notes text-gray-500 group-hover:text-fuchsia-400 text-xs transition-colors"></i>`
+                            `<div class="active-bars"><div></div><div></div><div></div></div>` 
+                            : `<div style="color: #9ca3af;">${iconMusic}</div>`
                         }
                     </div>
-                    <div class="flex-grow min-w-0">
-                        <h4 class="font-semibold text-xs truncate ${isActive ? 'text-fuchsia-400' : 'text-gray-200'}">${track.title}</h4>
-                        <p class="text-[10px] text-gray-400 truncate mt-0.5">${track.artist}</p>
+                    <div class="flex-grow truncate">
+                        <h4 class="font-semibold text-xs truncate ${isActive ? 'text-fuchsia' : 'text-white'}">${track.title}</h4>
+                        <p class="text-xs text-gray truncate" style="margin-top: 2px;">${track.artist}</p>
                     </div>
                 `;
                 playlistUI.appendChild(trackEl);
@@ -609,23 +604,10 @@
             trackTitleUI.textContent = track.title;
             trackArtistUI.textContent = track.artist;
             
-            if (track.type === 'youtube') {
-                activeEngine = 'youtube';
-                audio.pause(); 
-                if (isYtReady) {
-                    ytPlayer.loadVideoById(track.ytId);
-                    ytPlayer.setVolume(volumeSlider.value * 100);
-                    if (!autoPlay && !isPlaying) ytPlayer.pauseVideo();
-                }
-            } else {
-                activeEngine = 'html5';
-                if (isYtReady) ytPlayer.stopVideo(); 
-                audio.src = track.url;
-                if (autoPlay || isPlaying) audio.play();
-            }
+            audio.src = track.url;
             
-            albumArt.classList.add('scale-105', 'border-fuchsia-500');
-            setTimeout(() => albumArt.classList.remove('scale-105', 'border-fuchsia-500'), 200);
+            albumArt.classList.add('pop');
+            setTimeout(() => albumArt.classList.remove('pop'), 200);
 
             renderPlaylist();
             
@@ -633,29 +615,19 @@
                 audio.play();
                 isPlaying = true;
                 updatePlayIcon();
+                renderPlaylist(); // Update animation bars
             }
         }
 
         function togglePlay() {
             if (tracks.length === 0) return;
             
-            if (activeEngine === 'html5') {
-                if (audio.paused) {
-                    audio.play();
-                    isPlaying = true;
-                } else {
-                    audio.pause();
-                    isPlaying = false;
-                }
-            } else if (activeEngine === 'youtube' && isYtReady) {
-                const state = ytPlayer.getPlayerState();
-                if (state === YT.PlayerState.PLAYING) {
-                    ytPlayer.pauseVideo();
-                    isPlaying = false;
-                } else {
-                    ytPlayer.playVideo();
-                    isPlaying = true;
-                }
+            if (audio.paused) {
+                audio.play();
+                isPlaying = true;
+            } else {
+                audio.pause();
+                isPlaying = false;
             }
             
             updatePlayIcon();
@@ -664,18 +636,17 @@
 
         function updatePlayIcon() {
             if (isPlaying) {
-                playIcon.classList.replace('ph-play', 'ph-pause');
-                playIcon.classList.remove('ml-1');
+                playIconWrapper.innerHTML = iconPause;
+                playIconWrapper.style.marginLeft = "0px";
             } else {
-                playIcon.classList.replace('ph-pause', 'ph-play');
-                playIcon.classList.add('ml-1');
+                playIconWrapper.innerHTML = iconPlay;
+                playIconWrapper.style.marginLeft = "2px";
             }
         }
 
         function toggleShuffle() {
             isShuffle = !isShuffle;
-            shuffleBtn.classList.toggle('text-fuchsia-400', isShuffle);
-            shuffleBtn.classList.toggle('text-gray-500', !isShuffle);
+            shuffleBtn.classList.toggle('active', isShuffle);
             if (isShuffle && currentTrackIndex !== -1) {
                 shuffleHistory = [currentTrackIndex]; 
             }
@@ -683,14 +654,7 @@
 
         function toggleRepeat() {
             isRepeatOne = !isRepeatOne;
-            repeatBtn.classList.toggle('text-fuchsia-400', isRepeatOne);
-            repeatBtn.classList.toggle('text-gray-500', !isRepeatOne);
-            
-            if (isRepeatOne) {
-                repeatBtn.innerHTML = '<i class="ph-bold ph-repeat-once text-xl"></i>';
-            } else {
-                repeatBtn.innerHTML = '<i class="ph-bold ph-repeat text-xl"></i>';
-            }
+            repeatBtn.classList.toggle('active', isRepeatOne);
         }
 
         function playNext(autoEnded = false) {
@@ -724,10 +688,8 @@
         function playPrev() {
             if (tracks.length === 0) return;
             
-            let currentSecs = activeEngine === 'html5' ? audio.currentTime : (isYtReady ? ytPlayer.getCurrentTime() : 0);
-            if (currentSecs > 3) {
-                if (activeEngine === 'html5') audio.currentTime = 0;
-                else if (isYtReady) ytPlayer.seekTo(0, true);
+            if (audio.currentTime > 3) {
+                audio.currentTime = 0;
                 return;
             }
             
@@ -744,7 +706,7 @@
         }
 
         function updateProgress() {
-            if (activeEngine !== 'html5') return; 
+            if (isNaN(audio.duration)) return;
             const percent = (audio.currentTime / audio.duration) * 100;
             progressBar.style.width = `${percent}%`;
             timeCurrent.textContent = formatTime(audio.currentTime);
@@ -759,4 +721,3 @@
     </script>
 </body>
 </html>
-
