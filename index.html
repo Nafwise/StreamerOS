@@ -203,7 +203,7 @@
         <div class="flex items-center gap-2">
             <!-- Discord SVG Icon -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
-            <span class="font-semibold text-white">Animus Tavern Music Player</span>
+            <span class="font-semibold text-white">Animus Tavern Player v1.1</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
             <span id="discord-status" style="color: #fbbf24;" class="text-xs pulse">Connecting to Discord...</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
@@ -340,7 +340,9 @@
         
         // --- NEW: FIREBASE MULTIPLAYER SDK IMPORTS ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, setPersistence, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        
+        // Swap getAuth and setPersistence for initializeAuth
+        import { initializeAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // =======================================================================
@@ -360,7 +362,13 @@
         const defaultAppId = typeof __app_id !== 'undefined' ? __app_id : 'animus-vtt-system';
 
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
+        
+        // CRITICAL FIX: Discord completely blocks IndexedDB. 
+        // initializeAuth() forces Firebase to use temporary memory before it ever tries to read blocked cookies!
+        const auth = initializeAuth(app, {
+            persistence: inMemoryPersistence
+        });
+        
         const db = getFirestore(app);
         let userId = null;
         let isRemoteUpdate = false; // Prevents infinite sync loops
@@ -368,10 +376,6 @@
         // --- Auth Setup ---
         async function initAuth() {
             try {
-                // IMPORTANT FIX: Discord blocks cookies/storage in its iframes.
-                // This forces Firebase to hold the authentication in temporary memory!
-                await setPersistence(auth, inMemoryPersistence);
-
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
@@ -379,7 +383,9 @@
                 }
             } catch(e) {
                 console.error("Firebase Auth failed:", e);
-                document.getElementById('cloud-status').textContent = "Cloud: Error";
+                // This will print the EXACT error to your screen so we can read it!
+                document.getElementById('cloud-status').textContent = "Err: " + (e.code || "Failed");
+                document.getElementById('cloud-status').style.color = "#ef4444"; // Red
             }
         }
         initAuth();
