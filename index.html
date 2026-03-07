@@ -74,6 +74,14 @@
             z-index: 100;
         }
 
+        /* Interaction Overlay (Forces Click for Audio) */
+        .overlay-glass {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(3, 0, 20, 0.95); backdrop-filter: blur(10px);
+            display: flex; justify-content: center; align-items: center; cursor: pointer;
+            transition: opacity 0.5s;
+        }
+
         /* Glass Windows */
         .glass-modal {
             background: rgba(15, 10, 25, 0.65);
@@ -192,18 +200,27 @@
 </head>
 <body>
 
+    <!-- Interaction Overlay (Fixes Autoplay Bug) -->
+    <div id="interaction-overlay" class="overlay-glass">
+        <div class="text-center">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d946ef" stroke-width="1.5" class="pulse" style="margin: 0 auto 16px auto;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <h2 class="text-2xl font-bold text-white mb-2" style="letter-spacing: 0.1em; text-transform: uppercase;">Enter The Tavern</h2>
+            <p class="text-gray text-sm">Click anywhere to connect audio</p>
+        </div>
+    </div>
+
     <!-- Synapse Trippy Background -->
     <canvas id="synapse-canvas" class="synapse-canvas"></canvas>
 
     <!-- Hidden Audio Element -->
     <audio id="audio-player"></audio>
 
-    <!-- Top Status Bar -->
+        <!-- Top Status Bar -->
     <div class="top-bar flex justify-between items-center text-sm text-gray">
         <div class="flex items-center gap-2">
             <!-- Discord SVG Icon -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
-            <span class="font-semibold text-white">Animus Tavern Player v1.4</span>
+            <span class="font-semibold text-white">Animus Tavern Player v1.6</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
             <span id="discord-status" style="color: #fbbf24;" class="text-xs pulse">Connecting to Discord...</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
@@ -339,11 +356,10 @@
         import { DiscordSDK } from 'https://esm.sh/@discord/embedded-app-sdk';
         
         // --- FIREBASE (NO AUTH ENFORCED) ---
-        // We removed Auth completely to bypass Discord iframe security.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- DOM Elements (Must be declared BEFORE they are used in functions!) ---
+        // --- DOM Elements ---
         const audio = document.getElementById('audio-player');
         const playBtn = document.getElementById('btn-play');
         const playIconWrapper = document.getElementById('play-icon-wrapper');
@@ -383,7 +399,29 @@
         let shuffleHistory = [];
         let zIndexCounter = 10;
         let isRemoteUpdate = false; 
+        let currentLoadedUrl = ""; // Helps prevent browser URL re-encoding bugs
+        let lastSyncedData = null; // Saves the cloud state for late joiners
         const userId = crypto.randomUUID(); // Purely random ID for tracking who is sending what
+
+        // --- Unlock Audio Engine Overlay ---
+        document.getElementById('interaction-overlay').addEventListener('click', function() {
+            this.style.opacity = '0';
+            setTimeout(() => this.style.display = 'none', 500);
+            
+            // This silent play/pause completely unlocks the browser's audio restrictions
+            audio.play().then(() => {
+                if (!isPlaying) {
+                    audio.pause();
+                } else if (lastSyncedData) {
+                    // If they sat on this screen for 5 minutes before clicking, 
+                    // instantly skip them forward to match everyone else's current time!
+                    const expectedPlaybackTime = (lastSyncedData.playbackTime || 0) + ((Date.now() - lastSyncedData.timestamp) / 1000);
+                    if (expectedPlaybackTime < audio.duration || isNaN(audio.duration)) {
+                        audio.currentTime = expectedPlaybackTime;
+                    }
+                }
+            }).catch(e => console.log("Audio unlocked:", e));
+        });
 
         // =======================================================================
         // 🔥 MULTIPLAYER SETUP 🔥 
@@ -404,7 +442,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Start listening to the cloud now that everything is safely defined
         setupMultiplayerListener();
 
         function setupMultiplayerListener() {
@@ -420,9 +457,6 @@
                 }
             }, (error) => {
                 console.error("Firestore sync error:", error);
-                
-                // If you get this error despite `allow read, write: if true;`, it means
-                // Firebase hasn't propagated your rules yet, OR App Check is enforcing restrictions.
                 document.getElementById('cloud-status').textContent = "Err: Perm Blocked";
                 document.getElementById('cloud-status').style.color = "#ef4444"; 
             });
@@ -431,10 +465,13 @@
         async function pushStateToCloud(forceClear = false) {
             if (isRemoteUpdate) return; 
 
+            // WE NOW SYNC THE ENTIRE QUEUE SO EVERYONE HAS THE SAME LIST
             const state = {
-                currentTrack: (currentTrackIndex >= 0 && !forceClear) ? tracks[currentTrackIndex] : null,
+                tracks: forceClear ? [] : tracks,
+                currentTrackIndex: forceClear ? -1 : currentTrackIndex,
                 isPlaying: forceClear ? false : isPlaying,
                 timestamp: Date.now(),
+                playbackTime: forceClear ? 0 : audio.currentTime, // Add exact playback second
                 sender: userId
             };
 
@@ -450,20 +487,44 @@
             if (data.sender === userId) return; 
             
             isRemoteUpdate = true; 
+            lastSyncedData = data; // Save for the late-joiner overlay
 
-            if (data.currentTrack) {
-                if (audio.src !== data.currentTrack.url && !audio.src.includes(data.currentTrack.url)) {
-                    audio.src = data.currentTrack.url;
-                    trackTitleUI.textContent = data.currentTrack.title;
-                    trackArtistUI.textContent = data.currentTrack.artist;
+            // Accept the host's queue perfectly
+            tracks = data.tracks || [];
+            currentTrackIndex = data.currentTrackIndex !== undefined ? data.currentTrackIndex : -1;
+            
+            // Re-render so the brother sees the huge list of songs appear
+            renderPlaylist();
+
+            if (currentTrackIndex >= 0 && tracks.length > 0) {
+                const track = tracks[currentTrackIndex];
+                
+                // Calculate exactly where the song should be right now
+                const expectedPlaybackTime = (data.playbackTime || 0) + (data.isPlaying ? (Date.now() - data.timestamp) / 1000 : 0);
+
+                // Check if the URL actually changed to prevent resetting the song over and over
+                if (currentLoadedUrl !== track.url) {
+                    audio.src = track.url;
+                    currentLoadedUrl = track.url;
+                    trackTitleUI.textContent = track.title;
+                    trackArtistUI.textContent = track.artist;
                     
                     albumArt.classList.add('pop');
                     setTimeout(() => albumArt.classList.remove('pop'), 200);
+                    
+                    audio.currentTime = expectedPlaybackTime; // Start at the correct synced time
+                } else {
+                    // Song is the same, but check if we desynced by more than 2 seconds (e.g. Host scrubbed timeline)
+                    if (Math.abs(audio.currentTime - expectedPlaybackTime) > 2) {
+                        audio.currentTime = expectedPlaybackTime;
+                    }
                 }
 
                 if (data.isPlaying !== isPlaying) {
                     if (data.isPlaying) {
-                        audio.play().catch(e => console.log("Waiting for user interaction to play audio."));
+                        audio.play().catch(e => {
+                            console.warn("Audio blocked: Did they click 'Enter Tavern' yet?", e);
+                        });
                         isPlaying = true;
                     } else {
                         audio.pause();
@@ -474,6 +535,7 @@
             } else {
                 audio.pause();
                 audio.src = '';
+                currentLoadedUrl = '';
                 isPlaying = false;
                 updatePlayIcon();
                 trackTitleUI.textContent = "No Track Loaded";
@@ -643,6 +705,7 @@
             shuffleHistory = [];
             audio.pause();
             audio.src = '';
+            currentLoadedUrl = '';
             isPlaying = false;
             
             updatePlayIcon();
@@ -725,6 +788,8 @@
             
             if (wasEmpty) {
                 loadTrack(0, true);
+            } else {
+                pushStateToCloud(); // Sync new tracks immediately
             }
         }
 
@@ -843,6 +908,8 @@
                 renderPlaylist();
                 if (currentTrackIndex === -1 && tracks.length === 1) {
                     loadTrack(0);
+                } else {
+                    pushStateToCloud();
                 }
             }
         }
@@ -917,6 +984,9 @@
             const width = progressContainer.clientWidth;
             const clickX = e.offsetX;
             audio.currentTime = (clickX / width) * audio.duration;
+            
+            // PUSH TO CLOUD: If you skip ahead in the song, force everyone else to skip ahead too!
+            pushStateToCloud();
         });
 
         volumeSlider.addEventListener('input', (e) => {
@@ -973,6 +1043,7 @@
             trackArtistUI.textContent = track.artist;
             
             audio.src = track.url;
+            currentLoadedUrl = track.url;
             
             albumArt.classList.add('pop');
             setTimeout(() => albumArt.classList.remove('pop'), 200);
