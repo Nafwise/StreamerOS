@@ -85,7 +85,7 @@
             position: absolute;
             display: flex; flex-direction: column;
             width: 100%;
-            max-width: 380px; /* Responsive fix for mobile */
+            max-width: 380px; 
         }
 
         .drag-handle {
@@ -184,7 +184,7 @@
         .tab-btn.active { color: #d946ef; border-bottom-color: #d946ef; }
         
         /* Repository UI */
-        .genre-btn { width: 100%; padding: 12px; background: rgba(31, 41, 55, 0.4); border: 1px solid rgba(88, 28, 135, 0.3); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; }
+        .genre-btn { width: 100%; background: rgba(31, 41, 55, 0.4); border: 1px solid rgba(88, 28, 135, 0.3); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
         .genre-btn:hover { background: rgba(88, 28, 135, 0.4); border-color: #d946ef; transform: translateY(-1px); }
         .genre-title { font-weight: 600; color: #e5e7eb; display: flex; align-items: center; gap: 8px; }
         .genre-count { font-size: 10px; font-family: monospace; background: rgba(15, 10, 25, 0.8); padding: 2px 6px; border-radius: 4px; color: #d946ef; }
@@ -301,7 +301,7 @@
 
             <!-- LIBRARY TAB CONTENT -->
             <div id="content-library" class="flex flex-col gap-2" style="flex-grow: 1; overflow-y: auto;">
-                <button id="btn-play-all" class="genre-btn" style="background: linear-gradient(135deg, rgba(147, 51, 234, 0.3), rgba(217, 70, 239, 0.3)); border-color: #d946ef; justify-content: center; gap: 8px; margin-bottom: 4px;">
+                <button id="btn-play-all" class="genre-btn" style="padding: 12px; background: linear-gradient(135deg, rgba(147, 51, 234, 0.3), rgba(217, 70, 239, 0.3)); border-color: #d946ef; justify-content: center; gap: 8px; margin-bottom: 4px;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     <span class="font-bold text-white tracking-wider">PLAY ALL TAVERNS</span>
                 </button>
@@ -339,6 +339,10 @@
         const DISCORD_CLIENT_ID = '1478929818694189076';
         let discordSdk;
 
+        // Global list of user names for the Synapse ships
+        // Pre-filled with fantasy classes as a fallback for browsers
+        let voiceChannelUsers = ["Rogue", "Paladin", "Cleric", "Wizard", "Barbarian", "Bard", "Druid"];
+
         async function initDiscord() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
@@ -353,6 +357,12 @@
                 statusSpan.textContent = "Activity Ready";
                 statusSpan.style.color = "#4ade80"; // green
                 statusSpan.classList.remove('pulse');
+
+                // Try to grab the actual names of the people in the Discord Voice Channel
+                fetchVoiceUsers();
+                // Update the user list every 15 seconds in case people join/leave
+                setInterval(fetchVoiceUsers, 15000);
+
             } catch (error) {
                 console.warn("Discord SDK Initialization Skipped:", error.message);
                 const statusSpan = document.getElementById('discord-status');
@@ -362,15 +372,29 @@
             }
         }
 
+        async function fetchVoiceUsers() {
+            try {
+                if (!discordSdk) return;
+                // Get everyone currently in this specific Activity instance
+                const data = await discordSdk.commands.getInstanceConnectedParticipants();
+                if (data.participants && data.participants.length > 0) {
+                    // Map out their display names (or fallback to username)
+                    voiceChannelUsers = data.participants.map(p => p.nickname || p.username || 'Traveler');
+                }
+            } catch (e) {
+                console.warn("Could not fetch participant names:", e);
+            }
+        }
+
         initDiscord();
 
-        // --- SYNAPSE VISUAL ENGINE (Background - Highly Optimized Revert) ---
+        // --- SYNAPSE VISUAL ENGINE (Background) ---
         const synCanvas = document.getElementById('synapse-canvas');
         const synCtx = synCanvas.getContext('2d');
         let synWidth, synHeight;
         let synNodes = [];
         let synSignals = [];
-        const maxNodes = 60; // Optimized for background performance
+        const maxNodes = 60; 
         const connectionDistance = 150;
         
         // Colors updated to match Tavern Theme
@@ -393,8 +417,6 @@
             synWidth = synCanvas.width = window.innerWidth;
             synHeight = synCanvas.height = window.innerHeight;
             
-            // Fix for Discord iframe initial load clustering:
-            // Proportionally space out the nodes instantly when the window expands
             if (oldWidth > 0 && oldHeight > 0 && synNodes.length > 0) {
                 let wRatio = synWidth / oldWidth;
                 let hRatio = synHeight / oldHeight;
@@ -418,11 +440,9 @@
                 this.x += this.vx;
                 this.y += this.vy;
                 
-                // Bounce off walls properly
                 if (this.x <= 0 || this.x >= synWidth) this.vx *= -1;
                 if (this.y <= 0 || this.y >= synHeight) this.vy *= -1;
                 
-                // Failsafe: if they get stuck outside the boundaries during a resize
                 if (this.x < 0) this.x = 0;
                 if (this.x > synWidth) this.x = synWidth;
                 if (this.y < 0) this.y = 0;
@@ -444,7 +464,16 @@
                 let dx = n1.x - n2.x;
                 let dy = n1.y - n2.y;
                 if (Math.sqrt(dx * dx + dy * dy) < connectionDistance * 1.5) {
-                    synSignals.push({ x: n1.x, y: n1.y, target: n2, progress: 0, color: n1.color });
+                    // Pick a random user from the voice channel to name this ship
+                    let shipName = voiceChannelUsers[Math.floor(Math.random() * voiceChannelUsers.length)];
+                    
+                    synSignals.push({ 
+                        x: n1.x, y: n1.y, 
+                        target: n2, 
+                        progress: 0, 
+                        color: n1.color,
+                        name: shipName 
+                    });
                 }
             }
         }, 300);
@@ -484,6 +513,7 @@
                 let curX = s.x + (s.target.x - s.x) * s.progress;
                 let curY = s.y + (s.target.y - s.y) * s.progress;
 
+                // Draw the glowing ship
                 synCtx.beginPath();
                 synCtx.arc(curX, curY, 2.5, 0, Math.PI * 2);
                 synCtx.fillStyle = '#ffffff';
@@ -491,6 +521,11 @@
                 synCtx.shadowColor = s.color;
                 synCtx.fill();
                 synCtx.shadowBlur = 0;
+                
+                // Draw the Player's Name next to the ship!
+                synCtx.font = "11px system-ui, sans-serif";
+                synCtx.fillStyle = "rgba(255, 255, 255, 0.6)";
+                synCtx.fillText(s.name, curX + 6, curY + 3);
             }
 
             requestAnimationFrame(animateSynapse);
@@ -765,21 +800,17 @@
             loadTrack(0, true);
         }
 
-        // New function to add without interrupting current playback
         function appendGenreToQueue(genreName) {
             const genreData = musicRepository[genreName];
             if (!genreData || genreData.tracks.length === 0) return;
 
             const wasEmpty = tracks.length === 0;
             
-            // Add all tracks from this genre to the end of the existing queue
             tracks.push(...genreData.tracks);
             
-            // Snap the UI over to the queue so the user can see them added
             switchTab('queue');
             renderPlaylist();
             
-            // If the player was completely empty and silent, start playing!
             if (wasEmpty) {
                 loadTrack(0, true);
             }
