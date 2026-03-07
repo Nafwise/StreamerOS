@@ -340,7 +340,7 @@
         
         // --- NEW: FIREBASE MULTIPLAYER SDK IMPORTS ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, setPersistence, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // =======================================================================
@@ -367,6 +367,10 @@
         // --- Auth Setup ---
         async function initAuth() {
             try {
+                // IMPORTANT FIX: Discord blocks cookies/storage in its iframes.
+                // This forces Firebase to hold the authentication in temporary memory!
+                await setPersistence(auth, inMemoryPersistence);
+
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
