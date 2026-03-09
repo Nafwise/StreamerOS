@@ -220,7 +220,7 @@
         <div class="flex items-center gap-2">
             <!-- Discord SVG Icon -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
-            <span class="font-semibold text-white">Animus Tavern Player v2.2</span>
+            <span class="font-semibold text-white">Animus Tavern Player v2.4</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
             <span id="discord-status" style="color: #fbbf24;" class="text-xs pulse">Connecting to Discord...</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
@@ -355,11 +355,8 @@
     <script type="module">
         import { DiscordSDK } from 'https://esm.sh/@discord/embedded-app-sdk';
         
-        // --- FIREBASE (THE SANDBOX BREAKER) ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        
-        // CRITICAL FIX: We imported memoryLocalCache to bypass the hard drive crash!
-        import { initializeFirestore, doc, setDoc, onSnapshot, memoryLocalCache } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // --- FIREBASE SDK COMPLETELY REMOVED ---
+        // We are using pure REST HTTP to bypass the Discord Sandbox Proxy completely!
 
         // --- DOM Elements ---
         const audio = document.getElementById('audio-player');
@@ -404,8 +401,8 @@
         let isRemoteUpdate = false; 
         let currentLoadedUrl = ""; 
         let lastSyncedData = null; 
+        let lastProcessedTimestamp = 0; // Prevents processing the same poll twice
         
-        // Because we killed Auth, we assign a perfect randomized UUID to your current session
         function generateSafeUUID() {
             if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
             return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -430,63 +427,72 @@
         });
 
         // =======================================================================
-        // 🔥 MULTIPLAYER SETUP 🔥 
+        // 🔥 MULTIPLAYER SETUP (PURE REST BYPASS) 🔥 
         // =======================================================================
-        // HARDCODED TO 100% ENSURE IT DOES NOT PULL YOUR OLD BATTLETRACKER CONFIG
-        const firebaseConfig = {
-            apiKey: "AIzaSyD6Nr96oE7v-Hylodd84nvT8Iq2abrW1Zc",
-            authDomain: "akashic-tome-27d3f.firebaseapp.com",
-            projectId: "akashic-tome-27d3f",
-            storageBucket: "akashic-tome-27d3f.firebasestorage.app",
-            messagingSenderId: "119655846688",
-            appId: "1:119655846688:web:f48071b4b39801f48efd45",
-            measurementId: "G-8BGWQVXNMM"
-        };
-        
+        const projectId = "akashic-tome-27d3f";
         const defaultAppId = 'animus-vtt-system';
-
-        const app = initializeApp(firebaseConfig);
         
-        // THE ULTIMATE DISCORD SANDBOX FIX:
-        // Discord blocks the local hard drive. If Firestore tries to use it, it freezes infinitely!
-        // This commands Firestore to strictly use temporary RAM, completely bypassing the sandbox crash.
-        const db = initializeFirestore(app, {
-            localCache: memoryLocalCache()
-        });
+        // This is the direct REST API URL to your specific database document. 
+        // No SDK required. It behaves exactly like a normal website loading an image!
+        const docUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/artifacts/${defaultAppId}/public/data/vttState/music`;
 
-        setupMultiplayerListener();
-
-        function setupMultiplayerListener() {
-            const syncDoc = doc(db, 'artifacts', defaultAppId, 'public', 'data', 'vttState', 'music');
-            
-            // Still using the Truth Serum to make sure it doesn't hang!
-            onSnapshot(syncDoc, { includeMetadataChanges: true }, (snapshot) => {
+        // 1. Polling System (Replaces the WebSocket listener)
+        async function pollCloud() {
+            if (isRemoteUpdate) return;
+            try {
+                // We add a timestamp to the URL so Discord's proxy can't cache an old version
+                const response = await fetch(docUrl + "?_t=" + Date.now());
                 
-                if (snapshot.metadata.hasPendingWrites) {
-                    cloudStatus.textContent = "Cloud: Uploading...";
-                    cloudStatus.style.color = "#fbbf24"; 
-                    return; 
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        if(cloudStatus.textContent !== "Cloud: Online") {
+                            cloudStatus.textContent = "Cloud: Online";
+                            cloudStatus.style.color = "#4ade80";
+                        }
+                        return; // DB just hasn't been created yet
+                    }
+                    throw new Error("HTTP " + response.status);
                 }
 
-                cloudStatus.textContent = "Cloud: Online";
-                cloudStatus.style.color = "#4ade80"; 
-
-                if (snapshot.exists()) {
-                    const data = snapshot.data();
-                    handleRemoteSync(data);
+                const json = await response.json();
+                
+                // Firestore REST API wraps our payload in layers, we just unpack it
+                if (json.fields && json.fields.payload && json.fields.payload.stringValue) {
+                    const data = JSON.parse(json.fields.payload.stringValue);
+                    
+                    // Don't react to our own uploads, and don't re-process old polling data
+                    if (data.sender !== userId && data.timestamp > lastProcessedTimestamp) {
+                        lastProcessedTimestamp = data.timestamp;
+                        handleRemoteSync(data);
+                    }
+                    
+                    if(cloudStatus.textContent !== "Cloud: Online") {
+                        cloudStatus.textContent = "Cloud: Online";
+                        cloudStatus.style.color = "#4ade80";
+                    }
                 }
-            }, (error) => {
-                console.error("Firestore sync error:", error);
-                cloudStatus.textContent = "Err: Sync Blocked";
-                cloudStatus.style.color = "#ef4444"; 
-            });
+            } catch (e) {
+                console.error("Polling error:", e);
+                cloudStatus.textContent = "Err: Network Blocked";
+                cloudStatus.style.color = "#ef4444";
+            }
         }
 
+        // Poll Google every 2 seconds to check if your brother pushed a button
+        setInterval(pollCloud, 2000);
+        pollCloud();
+
+        // 2. Upload System (Replaces setDoc)
         async function pushStateToCloud(forceClear = false) {
             if (isRemoteUpdate) return; 
 
+            const cloudSafeTracks = tracks.map(t => {
+                if(t.url.startsWith('blob:')) return { ...t, url: "" }; 
+                return t;
+            });
+
             const state = {
-                tracks: forceClear ? [] : tracks,
+                tracks: forceClear ? [] : cloudSafeTracks,
                 currentTrackIndex: forceClear ? -1 : currentTrackIndex,
                 isPlaying: forceClear ? false : isPlaying,
                 timestamp: Date.now(),
@@ -495,8 +501,32 @@
             };
 
             try {
-                const syncDoc = doc(db, 'artifacts', defaultAppId, 'public', 'data', 'vttState', 'music');
-                await setDoc(syncDoc, state);
+                cloudStatus.textContent = "Cloud: Uploading...";
+                cloudStatus.style.color = "#fbbf24"; 
+
+                // We package your exact status into a tiny JSON string
+                const body = {
+                    fields: {
+                        payload: { stringValue: JSON.stringify(state) }
+                    }
+                };
+
+                // Pure HTTP PATCH command. Discord can't block this!
+                const response = await fetch(docUrl, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) throw new Error("Upload failed: " + response.status);
+
+                cloudStatus.textContent = "Cloud: Sent!";
+                cloudStatus.style.color = "#d946ef"; 
+                setTimeout(() => {
+                    cloudStatus.textContent = "Cloud: Online";
+                    cloudStatus.style.color = "#4ade80";
+                }, 1500);
+
             } catch(e) {
                 console.error("Failed to push state:", e);
                 cloudStatus.textContent = "Err: Upload Failed";
@@ -505,8 +535,6 @@
         }
 
         function handleRemoteSync(data) {
-            if (data.sender === userId) return; 
-            
             isRemoteUpdate = true; 
             
             try {
@@ -522,6 +550,15 @@
                 if (currentTrackIndex >= 0 && tracks.length > 0) {
                     const track = tracks[currentTrackIndex];
                     const expectedPlaybackTime = (data.playbackTime || 0) + (data.isPlaying ? (Date.now() - data.timestamp) / 1000 : 0);
+
+                    if (track.url === "") {
+                         trackTitleUI.textContent = track.title + " (Local File)";
+                         trackArtistUI.textContent = "Cannot sync local files";
+                         audio.pause();
+                         isPlaying = false;
+                         updatePlayIcon();
+                         return;
+                    }
 
                     if (currentLoadedUrl !== track.url) {
                         audio.src = track.url;
@@ -1015,7 +1052,6 @@
         });
 
         function renderPlaylist() {
-            // Updated to clearly show if the queue synced from someone else
             trackCountUI.textContent = `${tracks.length} TRKS`;
             
             if (tracks.length === 0) {
