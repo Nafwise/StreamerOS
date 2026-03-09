@@ -231,9 +231,11 @@
         <div class="flex items-center gap-2">
             <!-- Discord SVG Icon -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
-            <span class="font-semibold text-white">Animus Tavern Player v2.9</span>
+            <span class="font-semibold text-white">Animus Tavern Player v3.0</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
-            <span id="discord-status" style="color: #fbbf24;" class="text-xs pulse">Connecting to Discord...</span>
+            <span id="instance-status" style="color: #9ca3af;" class="text-xs font-mono">Room: ---</span>
+            <span style="opacity: 0.5; margin: 0 4px;">|</span>
+            <span id="discord-status" style="color: #fbbf24;" class="text-xs pulse">Connecting...</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
             <span id="cloud-status" style="color: #fbbf24;" class="text-xs font-mono">Cloud: Connecting...</span>
         </div>
@@ -372,9 +374,6 @@
     <script type="module">
         import { DiscordSDK } from 'https://esm.sh/@discord/embedded-app-sdk';
         
-        // --- FIREBASE SDK COMPLETELY REMOVED ---
-        // We are using pure REST HTTP to bypass the Discord Sandbox Proxy completely!
-
         // --- DOM Elements ---
         const audio = document.getElementById('audio-player');
         const playBtn = document.getElementById('btn-play');
@@ -401,6 +400,7 @@
         const genreContainer = document.getElementById('genre-container');
         const btnClearQueue = document.getElementById('btn-clear-queue');
         const cloudStatus = document.getElementById('cloud-status');
+        const roomIdUI = document.getElementById('room-id');
 
         // SVG Constants
         const iconPlay = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
@@ -418,13 +418,59 @@
         let isRemoteUpdate = false; 
         let currentLoadedUrl = ""; 
         let lastSyncedData = null; 
-        let lastProcessedTimestamp = 0; // Prevents processing the same poll twice
+        let lastProcessedTimestamp = 0; 
         
+        // Ensure the browser tab running this script has a unique user ID
         function generateSafeUUID() {
             if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
             return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         }
         const userId = generateSafeUUID(); 
+
+        // =======================================================================
+        // 🔥 INSTANCING: THE "PRIVATE ROOM" SYSTEM 🔥
+        // =======================================================================
+        // 1. We check if Discord injected a secret instance ID into the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        let instanceId = urlParams.get('instance_id');
+        
+        // 2. If we are running in a regular web browser with no URL params, we generate a persistent room ID for testing
+        if (!instanceId) {
+            instanceId = localStorage.getItem('animus_tavern_instance');
+            if (!instanceId) {
+                instanceId = 'room_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('animus_tavern_instance', instanceId);
+            }
+        }
+        
+        // Show the short ID in the top bar
+        roomIdUI.textContent = instanceId.substring(0, 6).toUpperCase();
+
+        // 3. The DM Remote Control Feature!
+        document.getElementById('btn-copy-session').addEventListener('click', () => {
+            // Build the secret URL that forces a browser to join this specific room
+            const remoteUrl = window.location.origin + window.location.pathname + '?instance_id=' + instanceId;
+            
+            // Safe copy method for strict Discord iframes
+            const ta = document.createElement('textarea');
+            ta.value = remoteUrl;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                roomIdUI.textContent = "COPIED!";
+                roomIdUI.style.color = "#d946ef";
+                setTimeout(() => {
+                    roomIdUI.textContent = instanceId.substring(0, 6).toUpperCase();
+                    roomIdUI.style.color = "#22d3ee";
+                }, 2000);
+            } catch (e) {
+                console.error("Copy failed", e);
+            }
+            document.body.removeChild(ta);
+        });
 
         // --- Unlock Audio Engine Overlay ---
         document.getElementById('interaction-overlay').addEventListener('click', function() {
@@ -450,8 +496,16 @@
         const defaultAppId = 'animus-vtt-system';
         const apiKey = "AIzaSyD6Nr96oE7v-Hylodd84nvT8Iq2abrW1Zc"; 
         
-        // The exact Google Cloud Document path
-        const docPath = `projects/${projectId}/databases/(default)/documents/artifacts/${defaultAppId}/public/data/vttState/music`;
+        // GRAB DISCORD INSTANCE ID: This creates private rooms for different servers!
+        const urlParams = new URLSearchParams(window.location.search);
+        const instanceId = urlParams.get('instance_id') || 'Global';
+        
+        // Display the room ID in the top bar (first 8 characters to keep it clean)
+        const roomDisplay = instanceId === 'Global' ? 'Global Test' : instanceId.substring(0, 8);
+        document.getElementById('instance-status').textContent = `Room: ${roomDisplay}`;
+        
+        // The exact Google Cloud Document path - NOW INSTANCED!
+        const docPath = `projects/${projectId}/databases/(default)/documents/artifacts/${defaultAppId}/public/data/vttState/music_${instanceId}`;
         
         // This detects if we are trapped inside Discord's invisible sandbox
         const isDiscord = window.location.hostname.includes('discordsays.com');
@@ -462,19 +516,6 @@
         const docUrl = `${firebaseBaseUrl}/v1/${docPath}`;
 
         // 1. Polling System (Replaces the WebSocket listener)
-        async function pollCloud() {
-            if (isRemoteUpdate) return;
-            try {
-                // BUG FIX: Google's REST API strictly rejects ANY unknown URL parameters. 
-                // We must remove the "_t" cache-buster from the URL and use Headers instead!
-                const response = await fetch(`${docUrl}?key=${apiKey}`, {
-                    method: 'GET',
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
-                });
                 
                 if (!response.ok) {
                     if (response.status === 404) {
@@ -482,7 +523,7 @@
                             cloudStatus.textContent = "Cloud: Online";
                             cloudStatus.style.color = "#4ade80";
                         }
-                        return; // DB just hasn't been created yet
+                        return; 
                     }
                     const errJson = await response.json();
                     throw new Error(errJson.error?.message || `HTTP ${response.status}`);
@@ -512,11 +553,10 @@
             }
         }
 
-        // Poll Google every 2 seconds to check if your brother pushed a button
         setInterval(pollCloud, 2000);
         pollCloud();
 
-        // 2. Upload System (Replaces setDoc)
+        // 2. Upload System 
         async function pushStateToCloud(forceClear = false) {
             if (isRemoteUpdate) return; 
 
@@ -538,15 +578,12 @@
                 cloudStatus.textContent = "Cloud: Uploading...";
                 cloudStatus.style.color = "#fbbf24"; 
 
-                // THE V2.8 FIX: We completely stripped all the complex formatting tags.
-                // We just send the raw JSON package!
                 const body = {
                     fields: {
                         payload: { stringValue: JSON.stringify(state) }
                     }
                 };
 
-                // No weird updateMasks, just standard PATCH command!
                 const response = await fetch(`${docUrl}?key=${apiKey}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
