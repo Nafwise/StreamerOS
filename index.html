@@ -231,7 +231,7 @@
         <div class="flex items-center gap-2">
             <!-- Discord SVG Icon -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
-            <span class="font-semibold text-white">Animus Tavern Player v3.0</span>
+            <span class="font-semibold text-white">Animus Tavern Player v3.1</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
             <span id="instance-status" style="color: #9ca3af;" class="text-xs font-mono">Room: ---</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
@@ -241,6 +241,10 @@
         </div>
         <div class="flex items-center gap-4">
             <div id="clock" class="font-mono">00:00</div>
+            <button id="btn-copy-session" class="text-gray btn-refresh" title="Copy Session Link" style="display: none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <span id="room-id">ROOM</span>
+            </button>
             <button id="btn-refresh" class="text-gray btn-refresh" title="Force Refresh App">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                 Refresh
@@ -374,6 +378,9 @@
     <script type="module">
         import { DiscordSDK } from 'https://esm.sh/@discord/embedded-app-sdk';
         
+        // --- FIREBASE SDK COMPLETELY REMOVED ---
+        // We are using pure REST HTTP to bypass the Discord Sandbox Proxy completely!
+
         // --- DOM Elements ---
         const audio = document.getElementById('audio-player');
         const playBtn = document.getElementById('btn-play');
@@ -431,6 +438,7 @@
         // 🔥 INSTANCING: THE "PRIVATE ROOM" SYSTEM 🔥
         // =======================================================================
         // 1. We check if Discord injected a secret instance ID into the URL
+        // BUG FIX: Corrected "newSearchParams" to "new URLSearchParams"
         const urlParams = new URLSearchParams(window.location.search);
         let instanceId = urlParams.get('instance_id');
         
@@ -442,35 +450,6 @@
                 localStorage.setItem('animus_tavern_instance', instanceId);
             }
         }
-        
-        // Show the short ID in the top bar
-        roomIdUI.textContent = instanceId.substring(0, 6).toUpperCase();
-
-        // 3. The DM Remote Control Feature!
-        document.getElementById('btn-copy-session').addEventListener('click', () => {
-            // Build the secret URL that forces a browser to join this specific room
-            const remoteUrl = window.location.origin + window.location.pathname + '?instance_id=' + instanceId;
-            
-            // Safe copy method for strict Discord iframes
-            const ta = document.createElement('textarea');
-            ta.value = remoteUrl;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            try {
-                document.execCommand('copy');
-                roomIdUI.textContent = "COPIED!";
-                roomIdUI.style.color = "#d946ef";
-                setTimeout(() => {
-                    roomIdUI.textContent = instanceId.substring(0, 6).toUpperCase();
-                    roomIdUI.style.color = "#22d3ee";
-                }, 2000);
-            } catch (e) {
-                console.error("Copy failed", e);
-            }
-            document.body.removeChild(ta);
-        });
 
         // --- Unlock Audio Engine Overlay ---
         document.getElementById('interaction-overlay').addEventListener('click', function() {
@@ -496,12 +475,8 @@
         const defaultAppId = 'animus-vtt-system';
         const apiKey = "AIzaSyD6Nr96oE7v-Hylodd84nvT8Iq2abrW1Zc"; 
         
-        // GRAB DISCORD INSTANCE ID: This creates private rooms for different servers!
-        const urlParams = new URLSearchParams(window.location.search);
-        const instanceId = urlParams.get('instance_id') || 'Global';
-        
-        // Display the room ID in the top bar (first 8 characters to keep it clean)
-        const roomDisplay = instanceId === 'Global' ? 'Global Test' : instanceId.substring(0, 8);
+        // Display the room ID in the top bar
+        const roomDisplay = instanceId.startsWith('room_') ? 'Global Test' : instanceId.substring(0, 8);
         document.getElementById('instance-status').textContent = `Room: ${roomDisplay}`;
         
         // The exact Google Cloud Document path - NOW INSTANCED!
@@ -516,6 +491,18 @@
         const docUrl = `${firebaseBaseUrl}/v1/${docPath}`;
 
         // 1. Polling System (Replaces the WebSocket listener)
+        async function pollCloud() {
+            if (isRemoteUpdate) return;
+            try {
+                // FIXED: Use headers to bypass cache instead of URL parameters so Google doesn't reject it!
+                const response = await fetch(`${docUrl}?key=${apiKey}`, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
                 
                 if (!response.ok) {
                     if (response.status === 404) {
@@ -523,10 +510,10 @@
                             cloudStatus.textContent = "Cloud: Online";
                             cloudStatus.style.color = "#4ade80";
                         }
-                        return; 
+                        return; // DB just hasn't been created yet, this is normal for a new room!
                     }
-                    const errJson = await response.json();
-                    throw new Error(errJson.error?.message || `HTTP ${response.status}`);
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errText.substring(0, 50)}`);
                 }
 
                 const json = await response.json();
@@ -553,10 +540,11 @@
             }
         }
 
+        // Poll Google every 2 seconds to check if your brother pushed a button
         setInterval(pollCloud, 2000);
         pollCloud();
 
-        // 2. Upload System 
+        // 2. Upload System (Replaces setDoc)
         async function pushStateToCloud(forceClear = false) {
             if (isRemoteUpdate) return; 
 
@@ -578,21 +566,24 @@
                 cloudStatus.textContent = "Cloud: Uploading...";
                 cloudStatus.style.color = "#fbbf24"; 
 
+                // RESTORED FIX: We must include the specific Document Name to create brand new rooms!
                 const body = {
+                    name: docPath,
                     fields: {
                         payload: { stringValue: JSON.stringify(state) }
                     }
                 };
 
-                const response = await fetch(`${docUrl}?key=${apiKey}`, {
+                // RESTORED FIX: We must use updateMask so Google knows we are doing a safe Upsert!
+                const response = await fetch(`${docUrl}?key=${apiKey}&updateMask.fieldPaths=payload`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
 
                 if (!response.ok) {
-                    const errJson = await response.json();
-                    throw new Error(errJson.error?.message || `HTTP ${response.status}`);
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errText.substring(0, 50)}`);
                 }
 
                 cloudStatus.textContent = "Cloud: Sent!";
