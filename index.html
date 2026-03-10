@@ -1575,7 +1575,8 @@
             if (n1 !== n2) {
                 let dx = n1.x - n2.x;
                 let dy = n1.y - n2.y;
-                if (Math.sqrt(dx * dx + dy * dy) < connectionDistance * 1.5) {
+                // Added condition to strictly limit to 3 ships max
+                if (Math.sqrt(dx * dx + dy * dy) < connectionDistance * 1.5 && synSignals.length < 3) {
                     let shipName = voiceChannelUsers[Math.floor(Math.random() * voiceChannelUsers.length)];
                     synSignals.push({ 
                         x: n1.x, y: n1.y, target: n2, progress: 0, color: n1.color, name: shipName 
