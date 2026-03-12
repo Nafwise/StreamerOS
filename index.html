@@ -211,7 +211,6 @@
 </head>
 <body>
 
-    <!-- Interaction Overlay (Fixes Autoplay Bug) -->
     <div id="interaction-overlay" class="overlay-glass">
         <div class="text-center">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d946ef" stroke-width="1.5" class="pulse" style="margin: 0 auto 16px auto;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -220,16 +219,12 @@
         </div>
     </div>
 
-    <!-- Synapse Trippy Background -->
     <canvas id="synapse-canvas" class="synapse-canvas"></canvas>
 
-    <!-- Hidden Audio Element -->
     <audio id="audio-player" preload="auto"></audio>
 
-        <!-- Top Status Bar -->
-    <div class="top-bar flex justify-between items-center text-sm text-gray">
+        <div class="top-bar flex justify-between items-center text-sm text-gray">
         <div class="flex items-center gap-2">
-            <!-- Discord SVG Icon -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
             <span class="font-semibold text-white">Animus Tavern Player v3.1</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
@@ -252,7 +247,6 @@
         </div>
     </div>
 
-    <!-- MODAL 1: THE PLAYER -->
     <div id="modal-player" class="glass-modal" style="top: 80px; left: 40px; z-index: 10;">
         <div class="drag-handle flex justify-between items-center">
             <div class="flex items-center gap-2 text-gray">
@@ -277,7 +271,6 @@
                 <h2 id="track-title" class="text-2xl font-bold truncate" style="margin-bottom: 4px;">No Track Loaded</h2>
                 <p id="track-artist" class="text-fuchsia text-sm truncate font-semibold" style="margin-bottom: 24px;">Awaiting Input...</p>
 
-                <!-- Progress Bar -->
                 <div class="flex items-center gap-3 text-xs text-gray font-mono" style="margin-bottom: 24px;">
                     <span id="time-current">0:00</span>
                     <div class="progress-container" id="progress-container">
@@ -286,7 +279,6 @@
                     <span id="time-total">0:00</span>
                 </div>
 
-                <!-- Controls -->
                 <div class="flex items-center justify-center gap-6">
                     <button id="btn-shuffle" class="text-gray icon-btn" title="Shuffle">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
@@ -307,7 +299,6 @@
                     </button>
                 </div>
                 
-                <!-- Volume -->
                 <div class="flex items-center justify-center gap-3 text-gray" style="margin-top: 24px;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/></svg>
                     <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.7">
@@ -317,7 +308,6 @@
         </div>
     </div>
 
-    <!-- MODAL 2: QUEUE & UPLOAD -->
     <div id="modal-queue" class="glass-modal" style="top: 80px; right: 40px; height: 440px; z-index: 10;">
         <div class="drag-handle flex justify-between items-center">
             <div class="flex items-center gap-2 text-gray">
@@ -325,7 +315,6 @@
                 <span class="font-semibold text-sm tracking-wide">MUSIC REPOSITORY</span>
             </div>
             
-            <!-- Clear Queue Button & Counter -->
             <div class="flex items-center gap-2">
                 <button id="btn-clear-queue" class="text-gray hover:text-fuchsia transition-colors" title="Clear Entire Queue">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
@@ -335,13 +324,11 @@
         </div>
 
         <div class="queue-content" style="padding-top: 8px;">
-            <!-- Tabs -->
             <div class="tabs-header">
                 <div class="tab-btn active" id="tab-library">SERVER LIBRARY</div>
                 <div class="tab-btn" id="tab-queue">CURRENT QUEUE</div>
             </div>
 
-            <!-- LIBRARY TAB CONTENT -->
             <div id="content-library" class="flex flex-col gap-2" style="flex-grow: 1; overflow-y: auto;">
                 <button id="btn-play-all" class="genre-btn" style="padding: 12px; background: linear-gradient(135deg, rgba(147, 51, 234, 0.3), rgba(217, 70, 239, 0.3)); border-color: #d946ef; justify-content: center; gap: 8px; margin-bottom: 4px;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -349,13 +336,10 @@
                 </button>
                 <p class="text-[10px] text-gray mb-2 text-center uppercase tracking-widest opacity-70">Or select a specific genre</p>
                 <div id="genre-container">
-                    <!-- Genres injected via JS -->
-                </div>
+                    </div>
             </div>
 
-            <!-- QUEUE TAB CONTENT (Hidden by default) -->
             <div id="content-queue" style="display: none; flex-direction: column; gap: 16px; height: calc(100% - 40px);">
-                <!-- Upload Zone -->
                 <div id="upload-zone" class="upload-zone">
                     <input type="file" id="file-input" accept="audio/mpeg, audio/mp3, audio/wav" multiple class="file-input">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 8px auto;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -363,7 +347,6 @@
                     <p class="text-xs text-gray" style="opacity: 0.7;">Adds to the current queue</p>
                 </div>
 
-                <!-- Playlist -->
                 <div class="playlist-container" id="playlist">
                     <div class="empty-state">
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.5;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -374,7 +357,6 @@
         </div>
     </div>
 
-    <!-- Main Logic -->
     <script type="module">
         import { DiscordSDK } from 'https://esm.sh/@discord/embedded-app-sdk';
         
@@ -425,7 +407,11 @@
         let isRemoteUpdate = false; 
         let currentLoadedUrl = ""; 
         let lastSyncedData = null; 
+        
+        // --- NEW: Sync ID Logic ---
         let lastProcessedTimestamp = 0; 
+        let localSyncId = Date.now(); // Start sequence
+        let lastSyncId = 0;           // Track the highest remote syncId processed
         
         // Ensure the browser tab running this script has a unique user ID
         function generateSafeUUID() {
@@ -494,8 +480,9 @@
         async function pollCloud() {
             if (isRemoteUpdate) return;
             try {
-                // FIXED: Use headers to bypass cache instead of URL parameters so Google doesn't reject it!
-                const response = await fetch(`${docUrl}?key=${apiKey}`, {
+                // NEW: Added nocache URL parameter exactly as requested.
+                const currentNoCache = Date.now();
+                const response = await fetch(`${docUrl}?key=${apiKey}&nocache=${currentNoCache}`, {
                     method: 'GET',
                     headers: {
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -521,9 +508,16 @@
                 if (json.fields && json.fields.payload && json.fields.payload.stringValue) {
                     const data = JSON.parse(json.fields.payload.stringValue);
                     
-                    if (data.sender !== userId && data.timestamp > lastProcessedTimestamp) {
-                        lastProcessedTimestamp = data.timestamp;
-                        handleRemoteSync(data);
+                    // NEW: Intercept data and check if the syncId is strictly greater than our last known syncId
+                    if (data.sender !== userId) {
+                        const hasNewSyncId = data.syncId && data.syncId > lastSyncId;
+                        const hasNewTimestampFallback = !data.syncId && data.timestamp > lastProcessedTimestamp;
+
+                        if (hasNewSyncId || hasNewTimestampFallback) {
+                            lastSyncId = data.syncId || lastSyncId; // Update local tracker
+                            lastProcessedTimestamp = data.timestamp;
+                            handleRemoteSync(data); // ONLY apply changes if syncId passed
+                        }
                     }
                     
                     if(cloudStatus.textContent !== "Cloud: Online") {
@@ -553,11 +547,15 @@
                 return t;
             });
 
+            // NEW: Increment syncId to guarantee this payload has a higher ID than the last
+            localSyncId++;
+
             const state = {
                 tracks: forceClear ? [] : cloudSafeTracks,
                 currentTrackIndex: forceClear ? -1 : currentTrackIndex,
                 isPlaying: forceClear ? false : isPlaying,
                 timestamp: Date.now(),
+                syncId: localSyncId, // NEW: Inject explicit syncId
                 playbackTime: forceClear ? 0 : audio.currentTime,
                 sender: userId
             };
@@ -628,6 +626,7 @@
                          return;
                     }
 
+                    // NEW: Ensure track loading only runs if the incoming URL is different
                     if (currentLoadedUrl !== track.url) {
                         audio.src = track.url;
                         currentLoadedUrl = track.url;
