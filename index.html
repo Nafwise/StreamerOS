@@ -425,6 +425,7 @@
         let isShuffle = false;
         let isRepeatOne = false;
         let shuffleHistory = [];
+        let zIndexCounter = 10;
         let isRemoteUpdate = false; 
         let currentLoadedUrl = ""; 
         let lastSyncedData = null; 
@@ -745,7 +746,7 @@
         });
 
         // =======================================================================
-        // 🔥 MULTIPLAYER SETUP (SMART REST SNAPSHOT EMULATOR) 🔥 
+        // 🔥 MULTIPLAYER SETUP (THE CSP TUNNEL BYPASS) 🔥 
         // =======================================================================
         const projectId = "akashic-tome-27d3f";
         const defaultAppId = 'animus-vtt-system';
@@ -759,21 +760,16 @@
         const firebaseBaseUrl = isDiscord ? '/firestore' : 'https://firestore.googleapis.com';
         const docUrl = `${firebaseBaseUrl}/v1/${docPath}`;
 
-        // 1. SMART POLLING SYSTEM
-        // This acts like an Event Snapshot Listener but avoids Discord WebSocket blocking.
-        // It uses recursive fetching to prevent network jams and immediately triggers on window focus.
-        
-        let activePollTimer = null;
-        let isActivelyPolling = false;
-
-        async function triggerSnapshotFetch() {
+        // 1. Polling System (Replaces the WebSocket listener)
+        async function pollCloud() {
             if (isRemoteUpdate) return;
             try {
-                // We remove the custom Cache-Control headers because they force a CORS 
-                // Preflight (OPTIONS) request, which Discord's Proxy actively blocks!
-                // The nocache URL parameter is more than enough to break the cache.
-                const response = await fetch(`${docUrl}?key=${apiKey}&nocache=${Date.now()}`, {
-                    method: 'GET'
+                // FIX: Google APIs throw HTTP 400 if you pass unknown query parameters like 'nocache'.
+                // Instead, we use the native fetch 'cache: no-store' option to bypass cache locally
+                // without triggering strict CORS preflights or angering Google's API validator!
+                const response = await fetch(`${docUrl}?key=${apiKey}`, {
+                    method: 'GET',
+                    cache: 'no-store'
                 });
                 
                 if (!response.ok) {
@@ -782,9 +778,10 @@
                             cloudStatus.textContent = "Cloud: Online";
                             cloudStatus.style.color = "#4ade80";
                         }
-                        return;
+                        return; // DB just hasn't been created yet, this is normal for a new room!
                     }
-                    throw new Error(`HTTP ${response.status}`);
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errText.substring(0, 50)}`);
                 }
 
                 const json = await response.json();
@@ -804,49 +801,20 @@
                     }
                 }
             } catch (e) {
-                console.error("Snapshot Fetch error:", e);
-                cloudStatus.textContent = "Err: Fetch Blocked";
+                console.error("Polling error:", e);
+                let msg = e.message || "Network Error";
+                if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) msg = "CSP Tunnel Blocked";
+                cloudStatus.textContent = "Err: " + msg.substring(0, 20);
                 cloudStatus.style.color = "#ef4444";
             }
         }
 
-        // Recursive Polling Engine (Replaces raw setInterval)
-        async function startSmartSnapshotListener() {
-            if (isActivelyPolling) return;
-            isActivelyPolling = true;
+        // Poll Google every 2 seconds to check if your brother pushed a button
+        setInterval(pollCloud, 2000);
+        pollCloud();
 
-            async function loop() {
-                await triggerSnapshotFetch();
-                
-                // Adaptive delay: wait 2 seconds, but prevents overlapping requests
-                // if the connection is slow.
-                activePollTimer = setTimeout(loop, 2000);
-            }
-            
-            loop();
-        }
-
-        // INSTANT WAKE-UP LOGIC
-        // If Discord throttled the background tab, this forces an immediate sync
-        // the moment the user brings the tavern back into focus.
-        function handleVisibilityChange() {
-            if (document.visibilityState === 'visible' || document.hasFocus()) {
-                clearTimeout(activePollTimer);
-                isActivelyPolling = false;
-                startSmartSnapshotListener(); // Kickstart it immediately
-            }
-        }
-        
-        document.addEventListener("visibilitychange", handleVisibilityChange);
-        window.addEventListener("focus", handleVisibilityChange);
-
-        // Start the engine
-        startSmartSnapshotListener();
-
-
-        // 2. UPLOAD SYSTEM (With Auto-Retry Logic)
-        // Solves the issue where you have to "Play/Pause" again to push it.
-        async function pushStateToCloud(forceClear = false, retryCount = 2) {
+        // 2. Upload System (Replaces setDoc)
+        async function pushStateToCloud(forceClear = false) {
             if (isRemoteUpdate) return; 
 
             const cloudSafeTracks = tracks.map(t => {
@@ -859,7 +827,7 @@
                 currentTrackIndex: forceClear ? -1 : currentTrackIndex,
                 isPlaying: forceClear ? false : isPlaying,
                 timestamp: Date.now(),
-                syncId: Date.now() + Math.random(), // Absolute uniqueness
+                syncId: Date.now(), // Magic bullet for forcing exact updates instantly
                 playbackTime: forceClear ? 0 : audio.currentTime,
                 sender: userId
             };
@@ -868,6 +836,7 @@
                 cloudStatus.textContent = "Cloud: Uploading...";
                 cloudStatus.style.color = "#fbbf24"; 
 
+                // We must include the specific Document Name to create brand new rooms!
                 const body = {
                     name: docPath,
                     fields: {
@@ -875,13 +844,17 @@
                     }
                 };
 
+                // We must use updateMask so Google knows we are doing a safe Upsert!
                 const response = await fetch(`${docUrl}?key=${apiKey}&updateMask.fieldPaths=payload`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errText.substring(0, 50)}`);
+                }
 
                 cloudStatus.textContent = "Cloud: Sent!";
                 cloudStatus.style.color = "#d946ef"; 
@@ -892,15 +865,10 @@
 
             } catch(e) {
                 console.error("Failed to push state:", e);
-                // RETRY LOGIC: Automatically try again if Discord dropped the packet
-                if (retryCount > 0) {
-                    cloudStatus.textContent = "Retrying Push...";
-                    cloudStatus.style.color = "#fbbf24";
-                    setTimeout(() => pushStateToCloud(forceClear, retryCount - 1), 1000);
-                } else {
-                    cloudStatus.textContent = "Err: Upload Failed";
-                    cloudStatus.style.color = "#ef4444";
-                }
+                let msg = e.message || "Upload Failed";
+                if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) msg = "CSP Tunnel Blocked";
+                cloudStatus.textContent = "Err: " + msg.substring(0, 20);
+                cloudStatus.style.color = "#ef4444";
             }
         }
 
@@ -988,7 +956,11 @@
         const forceSyncBtn = document.getElementById('btn-force-sync');
         if (forceSyncBtn) {
             forceSyncBtn.addEventListener('click', () => {
+                // Instantly pushes current state to cloud with a brand new syncId,
+                // forcing all connected clients to align with your exact time.
                 pushStateToCloud();
+                
+                // Visual feedback pop
                 forceSyncBtn.style.transform = 'scale(0.95)';
                 forceSyncBtn.style.background = '#fff';
                 forceSyncBtn.style.color = '#d946ef';
@@ -1029,6 +1001,7 @@
                 renderPlaylist(); 
             }
 
+            // Tell the cloud what we just did
             pushStateToCloud();
         }
 
@@ -1045,6 +1018,8 @@
             
             updatePlayIcon();
             renderPlaylist(); 
+            
+            // Tell the cloud to pause/play
             pushStateToCloud();
         }
 
@@ -1141,6 +1116,10 @@
             const secs = Math.floor(seconds % 60);
             return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
+        
+        // =======================================================================
+        // 🔥 UI LOGIC & EVENT LISTENERS (TABS, LIBRARY, QUEUE) 🔥
+        // =======================================================================
         
         // --- Tab Navigation ---
         const tabLibraryBtn = document.getElementById('tab-library');
@@ -1456,6 +1435,7 @@
             if (n1 !== n2) {
                 let dx = n1.x - n2.x;
                 let dy = n1.y - n2.y;
+                // Added condition to strictly limit to 3 ships max
                 if (Math.sqrt(dx * dx + dy * dy) < connectionDistance * 1.5 && synSignals.length < 3) {
                     let shipName = voiceChannelUsers[Math.floor(Math.random() * voiceChannelUsers.length)];
                     synSignals.push({ 
