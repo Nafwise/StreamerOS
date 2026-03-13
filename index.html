@@ -430,6 +430,47 @@
         let currentLoadedUrl = ""; 
         let lastSyncedData = null; 
         let lastProcessedTimestamp = 0; 
+
+        // --- Glass Window Dragging Logic ---
+        function makeDraggable(modalId) {
+            const modal = document.getElementById(modalId);
+            const handle = modal.querySelector('.drag-handle');
+            let isDragging = false;
+            let startX, startY, initialX, initialY;
+
+            handle.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                zIndexCounter++;
+                modal.style.zIndex = zIndexCounter;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialX = modal.offsetLeft;
+                initialY = modal.offsetTop;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                modal.style.left = `${initialX + dx}px`;
+                modal.style.top = `${initialY + dy}px`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            // Bring to front if you click anywhere on the body of the modal
+            modal.addEventListener('mousedown', () => {
+                if (modal.style.zIndex != zIndexCounter) {
+                    zIndexCounter++;
+                    modal.style.zIndex = zIndexCounter;
+                }
+            });
+        }
+
+        makeDraggable('modal-player');
+        makeDraggable('modal-queue');
         
         // Ensure the browser tab running this script has a unique user ID
         function generateSafeUUID() {
@@ -477,10 +518,10 @@
                     { title: "The Zenith and the Nadir", artist: "Athelgard", url: "music/Athelgard Tavern/The Zenith and the Nadir.mp3" },
                     { title: "We Are the Wall", artist: "Athelgard", url: "music/Athelgard Tavern/We Are the Wall.mp3" },
                     { title: "Weaving the Vitalis", artist: "Athelgard", url: "music/Athelgard Tavern/Weaving the Vitalis.mp3" },
-                    { title: "Xy'lorgmath's Orrery", artist: "Athelgard", url: "music/Athelgard Tavern/Xy'lorgmath's Orrery.mp3" }
-                    { title: "Swift's Horizon", artist: "Athelgard", url: "music/Athelgard Tavern/Swift's Horizon.mp3" }
-                    { title: "The Glimmer in the Jaw", artist: "Athelgard", url: "music/Athelgard Tavern/The Glimmer in the Jaw.mp3" }
-                    
+                    { title: "Xy'lorgmath's Orrery", artist: "Athelgard", url: "music/Athelgard Tavern/Xy'lorgmath's Orrery.mp3" },
+                    { title: "Swift's Horizon", artist: "Athelgard", url: "music/Athelgard Tavern/Swift's Horizon.mp3" },
+                    { title: "The Glimmer in the Jaw", artist: "Athelgard", url: "music/Athelgard Tavern/The Glimmer in the Jaw.mp3" },
+                    { title: "Children of the Genus (Aethelgard’s Welcome)", artist: "Athelgard", url: "music/Athelgard Tavern/Children of the Genus (Aethelgard’s Welcome).mp3" }
                 ]
             },
             "Swamp Tavern": {
@@ -763,9 +804,14 @@
         const firebaseBaseUrl = isDiscord ? '/firestore' : 'https://firestore.googleapis.com';
         const docUrl = `${firebaseBaseUrl}/v1/${docPath}`;
 
+        // Added Polling Lock to prevent infinite fetch loop bugs
+        let isPolling = false;
+
         // 1. Polling System (Replaces the WebSocket listener)
         async function pollCloud() {
-            if (isRemoteUpdate) return;
+            if (isRemoteUpdate || isPolling) return;
+            isPolling = true;
+
             try {
                 // FIX: Google APIs throw HTTP 400 if you pass unknown query parameters like 'nocache'.
                 // Instead, we use the native fetch 'cache: no-store' option to bypass cache locally
@@ -809,6 +855,8 @@
                 if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) msg = "CSP Tunnel Blocked";
                 cloudStatus.textContent = "Err: " + msg.substring(0, 20);
                 cloudStatus.style.color = "#ef4444";
+            } finally {
+                isPolling = false;
             }
         }
 
@@ -816,9 +864,13 @@
         setInterval(pollCloud, 2000);
         pollCloud();
 
+        // Added Pushing Lock to prevent duplicate fast click entries
+        let isPushing = false;
+
         // 2. Upload System (Replaces setDoc)
         async function pushStateToCloud(forceClear = false) {
-            if (isRemoteUpdate) return; 
+            if (isRemoteUpdate || isPushing) return; 
+            isPushing = true;
 
             const cloudSafeTracks = tracks.map(t => {
                 if(t.url.startsWith('blob:')) return { ...t, url: "" }; 
@@ -872,6 +924,8 @@
                 if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) msg = "CSP Tunnel Blocked";
                 cloudStatus.textContent = "Err: " + msg.substring(0, 20);
                 cloudStatus.style.color = "#ef4444";
+            } finally {
+                isPushing = false;
             }
         }
 
