@@ -211,6 +211,7 @@
 </head>
 <body>
 
+    <!-- Interaction Overlay (Fixes Autoplay Bug) -->
     <div id="interaction-overlay" class="overlay-glass">
         <div class="text-center">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d946ef" stroke-width="1.5" class="pulse" style="margin: 0 auto 16px auto;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -219,14 +220,18 @@
         </div>
     </div>
 
+    <!-- Synapse Trippy Background -->
     <canvas id="synapse-canvas" class="synapse-canvas"></canvas>
 
+    <!-- Hidden Audio Element -->
     <audio id="audio-player" preload="auto"></audio>
 
-        <div class="top-bar flex justify-between items-center text-sm text-gray">
+        <!-- Top Status Bar -->
+    <div class="top-bar flex justify-between items-center text-sm text-gray">
         <div class="flex items-center gap-2">
+            <!-- Discord SVG Icon -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
-            <span class="font-semibold text-white">Animus Tavern Player v3.1</span>
+            <span class="font-semibold text-white">Animus Tavern Player v3.2</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
             <span id="instance-status" style="color: #9ca3af;" class="text-xs font-mono">Room: ---</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
@@ -240,6 +245,10 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 <span id="room-id">ROOM</span>
             </button>
+            <button id="btn-force-sync" class="btn-refresh" style="color: #fff; background: rgba(217, 70, 239, 0.4); border-color: #d946ef; box-shadow: 0 0 10px rgba(217, 70, 239, 0.3);" title="Force Sync All Players">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+                Force Sync
+            </button>
             <button id="btn-refresh" class="text-gray btn-refresh" title="Force Refresh App">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                 Refresh
@@ -247,6 +256,7 @@
         </div>
     </div>
 
+    <!-- MODAL 1: THE PLAYER -->
     <div id="modal-player" class="glass-modal" style="top: 80px; left: 40px; z-index: 10;">
         <div class="drag-handle flex justify-between items-center">
             <div class="flex items-center gap-2 text-gray">
@@ -271,6 +281,7 @@
                 <h2 id="track-title" class="text-2xl font-bold truncate" style="margin-bottom: 4px;">No Track Loaded</h2>
                 <p id="track-artist" class="text-fuchsia text-sm truncate font-semibold" style="margin-bottom: 24px;">Awaiting Input...</p>
 
+                <!-- Progress Bar -->
                 <div class="flex items-center gap-3 text-xs text-gray font-mono" style="margin-bottom: 24px;">
                     <span id="time-current">0:00</span>
                     <div class="progress-container" id="progress-container">
@@ -279,6 +290,7 @@
                     <span id="time-total">0:00</span>
                 </div>
 
+                <!-- Controls -->
                 <div class="flex items-center justify-center gap-6">
                     <button id="btn-shuffle" class="text-gray icon-btn" title="Shuffle">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
@@ -299,6 +311,7 @@
                     </button>
                 </div>
                 
+                <!-- Volume -->
                 <div class="flex items-center justify-center gap-3 text-gray" style="margin-top: 24px;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/></svg>
                     <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.7">
@@ -308,6 +321,7 @@
         </div>
     </div>
 
+    <!-- MODAL 2: QUEUE & UPLOAD -->
     <div id="modal-queue" class="glass-modal" style="top: 80px; right: 40px; height: 440px; z-index: 10;">
         <div class="drag-handle flex justify-between items-center">
             <div class="flex items-center gap-2 text-gray">
@@ -315,6 +329,7 @@
                 <span class="font-semibold text-sm tracking-wide">MUSIC REPOSITORY</span>
             </div>
             
+            <!-- Clear Queue Button & Counter -->
             <div class="flex items-center gap-2">
                 <button id="btn-clear-queue" class="text-gray hover:text-fuchsia transition-colors" title="Clear Entire Queue">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
@@ -324,11 +339,13 @@
         </div>
 
         <div class="queue-content" style="padding-top: 8px;">
+            <!-- Tabs -->
             <div class="tabs-header">
                 <div class="tab-btn active" id="tab-library">SERVER LIBRARY</div>
                 <div class="tab-btn" id="tab-queue">CURRENT QUEUE</div>
             </div>
 
+            <!-- LIBRARY TAB CONTENT -->
             <div id="content-library" class="flex flex-col gap-2" style="flex-grow: 1; overflow-y: auto;">
                 <button id="btn-play-all" class="genre-btn" style="padding: 12px; background: linear-gradient(135deg, rgba(147, 51, 234, 0.3), rgba(217, 70, 239, 0.3)); border-color: #d946ef; justify-content: center; gap: 8px; margin-bottom: 4px;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -336,10 +353,13 @@
                 </button>
                 <p class="text-[10px] text-gray mb-2 text-center uppercase tracking-widest opacity-70">Or select a specific genre</p>
                 <div id="genre-container">
-                    </div>
+                    <!-- Genres injected via JS -->
+                </div>
             </div>
 
+            <!-- QUEUE TAB CONTENT (Hidden by default) -->
             <div id="content-queue" style="display: none; flex-direction: column; gap: 16px; height: calc(100% - 40px);">
+                <!-- Upload Zone -->
                 <div id="upload-zone" class="upload-zone">
                     <input type="file" id="file-input" accept="audio/mpeg, audio/mp3, audio/wav" multiple class="file-input">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 8px auto;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -347,6 +367,7 @@
                     <p class="text-xs text-gray" style="opacity: 0.7;">Adds to the current queue</p>
                 </div>
 
+                <!-- Playlist -->
                 <div class="playlist-container" id="playlist">
                     <div class="empty-state">
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.5;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -357,6 +378,7 @@
         </div>
     </div>
 
+    <!-- Main Logic -->
     <script type="module">
         import { DiscordSDK } from 'https://esm.sh/@discord/embedded-app-sdk';
         
@@ -407,11 +429,7 @@
         let isRemoteUpdate = false; 
         let currentLoadedUrl = ""; 
         let lastSyncedData = null; 
-        
-        // --- NEW: Sync ID Logic ---
         let lastProcessedTimestamp = 0; 
-        let localSyncId = Date.now(); // Start sequence
-        let lastSyncId = 0;           // Track the highest remote syncId processed
         
         // Ensure the browser tab running this script has a unique user ID
         function generateSafeUUID() {
@@ -421,269 +439,8 @@
         const userId = generateSafeUUID(); 
 
         // =======================================================================
-        // 🔥 INSTANCING: THE "PRIVATE ROOM" SYSTEM 🔥
+        // 🔥 ONLINE REPOSITORY DATABASE (PRELOADED TRACKS) 🔥
         // =======================================================================
-        // 1. We check if Discord injected a secret instance ID into the URL
-        // BUG FIX: Corrected "newSearchParams" to "new URLSearchParams"
-        const urlParams = new URLSearchParams(window.location.search);
-        let instanceId = urlParams.get('instance_id');
-        
-        // 2. If we are running in a regular web browser with no URL params, we generate a persistent room ID for testing
-        if (!instanceId) {
-            instanceId = localStorage.getItem('animus_tavern_instance');
-            if (!instanceId) {
-                instanceId = 'room_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('animus_tavern_instance', instanceId);
-            }
-        }
-
-        // --- Unlock Audio Engine Overlay ---
-        document.getElementById('interaction-overlay').addEventListener('click', function() {
-            this.style.opacity = '0';
-            setTimeout(() => this.style.display = 'none', 500);
-            
-            audio.play().then(() => {
-                if (!isPlaying) {
-                    audio.pause();
-                } else if (lastSyncedData) {
-                    const expectedPlaybackTime = (lastSyncedData.playbackTime || 0) + ((Date.now() - lastSyncedData.timestamp) / 1000);
-                    if (expectedPlaybackTime < audio.duration || isNaN(audio.duration)) {
-                        audio.currentTime = expectedPlaybackTime;
-                    }
-                }
-            }).catch(e => console.log("Audio unlocked:", e));
-        });
-
-        // =======================================================================
-        // 🔥 MULTIPLAYER SETUP (THE CSP TUNNEL BYPASS) 🔥 
-        // =======================================================================
-        const projectId = "akashic-tome-27d3f";
-        const defaultAppId = 'animus-vtt-system';
-        const apiKey = "AIzaSyD6Nr96oE7v-Hylodd84nvT8Iq2abrW1Zc"; 
-        
-        // Display the room ID in the top bar
-        const roomDisplay = instanceId.startsWith('room_') ? 'Global Test' : instanceId.substring(0, 8);
-        document.getElementById('instance-status').textContent = `Room: ${roomDisplay}`;
-        
-        // The exact Google Cloud Document path - NOW INSTANCED!
-        const docPath = `projects/${projectId}/databases/(default)/documents/artifacts/${defaultAppId}/public/data/vttState/music_${instanceId}`;
-        
-        // This detects if we are trapped inside Discord's invisible sandbox
-        const isDiscord = window.location.hostname.includes('discordsays.com');
-        
-        // If we are in Discord, route through the '/firestore' tunnel. Otherwise, go direct.
-        const firebaseBaseUrl = isDiscord ? '/firestore' : 'https://firestore.googleapis.com';
-        
-        const docUrl = `${firebaseBaseUrl}/v1/${docPath}`;
-
-        // 1. Polling System (Replaces the WebSocket listener)
-        async function pollCloud() {
-            if (isRemoteUpdate) return;
-            try {
-                // NEW: Added nocache URL parameter exactly as requested.
-                const currentNoCache = Date.now();
-                const response = await fetch(`${docUrl}?key=${apiKey}&nocache=${currentNoCache}`, {
-                    method: 'GET',
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
-                });
-                
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        if(cloudStatus.textContent !== "Cloud: Online") {
-                            cloudStatus.textContent = "Cloud: Online";
-                            cloudStatus.style.color = "#4ade80";
-                        }
-                        return; // DB just hasn't been created yet, this is normal for a new room!
-                    }
-                    const errText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errText.substring(0, 50)}`);
-                }
-
-                const json = await response.json();
-                
-                if (json.fields && json.fields.payload && json.fields.payload.stringValue) {
-                    const data = JSON.parse(json.fields.payload.stringValue);
-                    
-                    // NEW: Intercept data and check if the syncId is strictly greater than our last known syncId
-                    if (data.sender !== userId) {
-                        const hasNewSyncId = data.syncId && data.syncId > lastSyncId;
-                        const hasNewTimestampFallback = !data.syncId && data.timestamp > lastProcessedTimestamp;
-
-                        if (hasNewSyncId || hasNewTimestampFallback) {
-                            lastSyncId = data.syncId || lastSyncId; // Update local tracker
-                            lastProcessedTimestamp = data.timestamp;
-                            handleRemoteSync(data); // ONLY apply changes if syncId passed
-                        }
-                    }
-                    
-                    if(cloudStatus.textContent !== "Cloud: Online") {
-                        cloudStatus.textContent = "Cloud: Online";
-                        cloudStatus.style.color = "#4ade80";
-                    }
-                }
-            } catch (e) {
-                console.error("Polling error:", e);
-                let msg = e.message || "Network Error";
-                if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) msg = "CSP Tunnel Blocked";
-                cloudStatus.textContent = "Err: " + msg.substring(0, 20);
-                cloudStatus.style.color = "#ef4444";
-            }
-        }
-
-        // Poll Google every 2 seconds to check if your brother pushed a button
-        setInterval(pollCloud, 2000);
-        pollCloud();
-
-        // 2. Upload System (Replaces setDoc)
-        async function pushStateToCloud(forceClear = false) {
-            if (isRemoteUpdate) return; 
-
-            const cloudSafeTracks = tracks.map(t => {
-                if(t.url.startsWith('blob:')) return { ...t, url: "" }; 
-                return t;
-            });
-
-            // NEW: Increment syncId to guarantee this payload has a higher ID than the last
-            localSyncId++;
-
-            const state = {
-                tracks: forceClear ? [] : cloudSafeTracks,
-                currentTrackIndex: forceClear ? -1 : currentTrackIndex,
-                isPlaying: forceClear ? false : isPlaying,
-                timestamp: Date.now(),
-                syncId: localSyncId, // NEW: Inject explicit syncId
-                playbackTime: forceClear ? 0 : audio.currentTime,
-                sender: userId
-            };
-
-            try {
-                cloudStatus.textContent = "Cloud: Uploading...";
-                cloudStatus.style.color = "#fbbf24"; 
-
-                // RESTORED FIX: We must include the specific Document Name to create brand new rooms!
-                const body = {
-                    name: docPath,
-                    fields: {
-                        payload: { stringValue: JSON.stringify(state) }
-                    }
-                };
-
-                // RESTORED FIX: We must use updateMask so Google knows we are doing a safe Upsert!
-                const response = await fetch(`${docUrl}?key=${apiKey}&updateMask.fieldPaths=payload`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-
-                if (!response.ok) {
-                    const errText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errText.substring(0, 50)}`);
-                }
-
-                cloudStatus.textContent = "Cloud: Sent!";
-                cloudStatus.style.color = "#d946ef"; 
-                setTimeout(() => {
-                    cloudStatus.textContent = "Cloud: Online";
-                    cloudStatus.style.color = "#4ade80";
-                }, 1500);
-
-            } catch(e) {
-                console.error("Failed to push state:", e);
-                let msg = e.message || "Upload Failed";
-                if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) msg = "CSP Tunnel Blocked";
-                cloudStatus.textContent = "Err: " + msg.substring(0, 20);
-                cloudStatus.style.color = "#ef4444";
-            }
-        }
-
-        function handleRemoteSync(data) {
-            isRemoteUpdate = true; 
-            
-            try {
-                cloudStatus.textContent = "Cloud: Syncing...";
-                cloudStatus.style.color = "#22d3ee"; 
-                
-                lastSyncedData = data; 
-
-                tracks = data.tracks || [];
-                currentTrackIndex = data.currentTrackIndex !== undefined ? data.currentTrackIndex : -1;
-                renderPlaylist();
-
-                if (currentTrackIndex >= 0 && tracks.length > 0) {
-                    const track = tracks[currentTrackIndex];
-                    const expectedPlaybackTime = (data.playbackTime || 0) + (data.isPlaying ? (Date.now() - data.timestamp) / 1000 : 0);
-
-                    if (track.url === "") {
-                         trackTitleUI.textContent = track.title + " (Local File)";
-                         trackArtistUI.textContent = "Cannot sync local files";
-                         audio.pause();
-                         isPlaying = false;
-                         updatePlayIcon();
-                         return;
-                    }
-
-                    // NEW: Ensure track loading only runs if the incoming URL is different
-                    if (currentLoadedUrl !== track.url) {
-                        audio.src = track.url;
-                        currentLoadedUrl = track.url;
-                        trackTitleUI.textContent = track.title;
-                        trackArtistUI.textContent = track.artist;
-                        
-                        albumArt.classList.add('pop');
-                        setTimeout(() => albumArt.classList.remove('pop'), 200);
-                        
-                        audio.addEventListener('loadedmetadata', function onLoaded() {
-                            if (expectedPlaybackTime > 0) audio.currentTime = expectedPlaybackTime;
-                            audio.removeEventListener('loadedmetadata', onLoaded);
-                        });
-                    } else {
-                        if (Math.abs(audio.currentTime - expectedPlaybackTime) > 2) {
-                            audio.currentTime = expectedPlaybackTime;
-                        }
-                    }
-
-                    if (data.isPlaying !== isPlaying) {
-                        if (data.isPlaying) {
-                            audio.play().catch(e => console.warn("Audio waiting for Tavern Overlay click."));
-                            isPlaying = true;
-                        } else {
-                            audio.pause();
-                            isPlaying = false;
-                        }
-                        updatePlayIcon();
-                    }
-                } else {
-                    audio.pause();
-                    audio.src = '';
-                    currentLoadedUrl = '';
-                    isPlaying = false;
-                    updatePlayIcon();
-                    trackTitleUI.textContent = "No Track Loaded";
-                    trackArtistUI.textContent = "Awaiting Input...";
-                }
-            } finally {
-                isRemoteUpdate = false; 
-            }
-        }
-
-        // --- Clock Update ---
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('clock').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        }, 1000);
-
-        // --- App Refresh ---
-        document.getElementById('btn-refresh').addEventListener('click', () => {
-            window.location.reload();
-        });
-
-        audio.volume = volumeSlider.value;
-
-        // --- ONLINE REPOSITORY DATABASE ---
         const musicRepository = {
             "Athelgard Tavern": {
                 icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="2 16 2 22 22 22 22 16"></polygon><polygon points="2 16 6 4 12 10 18 4 22 16"></polygon></svg>`,
@@ -738,24 +495,38 @@
                     { title: "Yuan-Ti", artist: "Animus Tavern", url: "music/Swamp Tavern/Yuan-Ti.mp3" }
                 ]
             },
-            "Human Tavern": {
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3v18"/><path d="M3 14.5a3.5 3.5 0 0 1 7 0V21H3v-6.5z"/><path d="M14 14.5a3.5 3.5 0 0 1 7 0V21h-7v-6.5z"/></svg>`,
+            "Dwarven Tavern": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
                 tracks: [
-                    { title: "Black Water Swell", artist: "Animus Tavern", url: "music/Human Tavern/Black Water Swell.mp3" },
-                    { title: "Bolted Doors and Black Ale", artist: "Animus Tavern", url: "music/Human Tavern/Bolted Doors and Black Ale.mp3" },
-                    { title: "Bottom of the Barrel", artist: "Animus Tavern", url: "music/Human Tavern/Bottom of the Barrel.mp3" },
-                    { title: "Chairs in the Rafters", artist: "Animus Tavern", url: "music/Human Tavern/Chairs in the Rafters.mp3" },
-                    { title: "Guarded Favours", artist: "Animus Tavern", url: "music/Human Tavern/Guarded Favours.mp3" },
-                    { title: "Heave the Iron", artist: "Animus Tavern", url: "music/Human Tavern/Heave the Iron.mp3" },
-                    { title: "Rowdy Hearth", artist: "Animus Tavern", url: "music/Human Tavern/Rowdy Hearth.mp3" },
-                    { title: "The Chase", artist: "Animus Tavern", url: "music/Human Tavern/The Chase.mp3" },
-                    { title: "The Crooked Crown", artist: "Animus Tavern", url: "music/Human Tavern/The Crooked Crown.mp3" },
-                    { title: "The Mermaid's Coin", artist: "Animus Tavern", url: "music/Human Tavern/The Mermaid's Coin.mp3" },
-                    { title: "The Wandering Wagon", artist: "Animus Tavern", url: "music/Human Tavern/The Wandering Wagon.mp3" }
+                    { title: "Blood on the Obsidian", artist: "Animus Tavern", url: "music/Dwarven Tavern/Blood on the Obsidian.mp3" },
+                    { title: "Dwarven Bar Fight", artist: "Animus Tavern", url: "music/Dwarven Tavern/Dwarven Bar Fight.mp3" },
+                    { title: "Dwarven Welcome", artist: "Animus Tavern", url: "music/Dwarven Tavern/Dwarven Welcome.mp3" },
+                    { title: "Guardian Stones", artist: "Animus Tavern", url: "music/Dwarven Tavern/Guardian Stones.mp3" },
+                    { title: "Knuckles on the Oak", artist: "Animus Tavern", url: "music/Dwarven Tavern/Knuckles on the Oak.mp3" },
+                    { title: "Oaken Cask", artist: "Animus Tavern", url: "music/Dwarven Tavern/Oaken Cask.mp3" },
+                    { title: "Obsidian Halls", artist: "Animus Tavern", url: "music/Dwarven Tavern/Obsidian Halls.mp3" },
+                    { title: "Sparks on the Anvil", artist: "Animus Tavern", url: "music/Dwarven Tavern/Sparks on the Anvil.mp3" },
+                    { title: "The Granite Goblet", artist: "Animus Tavern", url: "music/Dwarven Tavern/The Granite Goblet.mp3" },
+                    { title: "Weight of the Crown", artist: "Animus Tavern", url: "music/Dwarven Tavern/Weight of the Crown.mp3" }
+                ]
+            },
+            "Elven Tavern": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13a10 10 0 0 1 7-2 9 9 0 0 1 9 9v2h-2v-2a7 7 0 0 0-7-7z"/></svg>`,
+                tracks: [
+                    { title: "Creeping Rogue", artist: "Animus Tavern", url: "music/Elven Tavern/Creeping Rogue.mp3" },
+                    { title: "Elven Welcome", artist: "Animus Tavern", url: "music/Elven Tavern/Elven Welcome.mp3" },
+                    { title: "Gliding", artist: "Animus Tavern", url: "music/Elven Tavern/Gliding.mp3" },
+                    { title: "Grand Visions", artist: "Animus Tavern", url: "music/Elven Tavern/Grand Visions.mp3" },
+                    { title: "Haunted Forest", artist: "Animus Tavern", url: "music/Elven Tavern/Haunted Forest.mp3" },
+                    { title: "Leaves in the Mud", artist: "Animus Tavern", url: "music/Elven Tavern/Leaves in the Mud.mp3" },
+                    { title: "Sparks in the Canopy", artist: "Animus Tavern", url: "music/Elven Tavern/Sparks in the Canopy.mp3" },
+                    { title: "Tangled Branches", artist: "Animus Tavern", url: "music/Elven Tavern/Tangled Branches.mp3" },
+                    { title: "Weathered Faces", artist: "Animus Tavern", url: "music/Elven Tavern/Weathered Faces.mp3" },
+                    { title: "Whispers in the Briar", artist: "Animus Tavern", url: "music/Elven Tavern/Whispers in the Briar.mp3" }
                 ]
             },
             "Halfling Tavern": {
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>`,
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 11h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M11 2v4"/><path d="M7 2v4"/><path d="M15 2v4"/><path d="M5 6h12a1 1 0 0 1 1 1v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7a1 1 0 0 1 1-1z"/></svg>`,
                 tracks: [
                     { title: "Embers and Oak (The Tavern Lullaby)", artist: "Animus Tavern", url: "music/Halfling Tavern/Embers and Oak (The Tavern Lullaby).mp3" },
                     { title: "Fleeting Winds", artist: "Animus Tavern", url: "music/Halfling Tavern/Fleeting Winds.mp3" },
@@ -775,55 +546,20 @@
                     { title: "Warm Fires", artist: "Animus Tavern", url: "music/Halfling Tavern/Warm Fires.mp3" }
                 ]
             },
-            "Elven Tavern": {
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`,
+            "Human Tavern": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`,
                 tracks: [
-                    { title: "Creeping Rogue", artist: "Animus Tavern", url: "music/Elven Tavern/Creeping Rogue.mp3" },
-                    { title: "Elven Welcome", artist: "Animus Tavern", url: "music/Elven Tavern/Elven Welcome.mp3" },
-                    { title: "Gliding", artist: "Animus Tavern", url: "music/Elven Tavern/Gliding.mp3" },
-                    { title: "Grand Visions", artist: "Animus Tavern", url: "music/Elven Tavern/Grand Visions.mp3" },
-                    { title: "Haunted Forest", artist: "Animus Tavern", url: "music/Elven Tavern/Haunted Forest.mp3" },
-                    { title: "Leaves in the Mud", artist: "Animus Tavern", url: "music/Elven Tavern/Leaves in the Mud.mp3" },
-                    { title: "Sparks in the Canopy", artist: "Animus Tavern", url: "music/Elven Tavern/Sparks in the Canopy.mp3" },
-                    { title: "Tangled Branches", artist: "Animus Tavern", url: "music/Elven Tavern/Tangled Branches.mp3" },
-                    { title: "Weathered Faces", artist: "Animus Tavern", url: "music/Elven Tavern/Weathered Faces.mp3" },
-                    { title: "Whispers in the Briar", artist: "Animus Tavern", url: "music/Elven Tavern/Whispers in the Briar.mp3" }
-                ]
-            },
-            "Dwarven Tavern": {
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3v6"/><path d="M13 3v6"/><path d="M2 9h20"/><path d="M12 22V9"/></svg>`,
-                tracks: [
-                    { title: "Blood on the Obsidian", artist: "Animus Tavern", url: "music/Dwarven Tavern/Blood on the Obsidian.mp3" },
-                    { title: "Dwarven Bar Fight", artist: "Animus Tavern", url: "music/Dwarven Tavern/Dwarven Bar Fight.mp3" },
-                    { title: "Dwarven Welcome", artist: "Animus Tavern", url: "music/Dwarven Tavern/Dwarven Welcome.mp3" },
-                    { title: "Guardian Stones", artist: "Animus Tavern", url: "music/Dwarven Tavern/Guardian Stones.mp3" },
-                    { title: "Knuckles on the Oak", artist: "Animus Tavern", url: "music/Dwarven Tavern/Knuckles on the Oak.mp3" },
-                    { title: "Oaken Cask", artist: "Animus Tavern", url: "music/Dwarven Tavern/Oaken Cask.mp3" },
-                    { title: "Obsidian Halls", artist: "Animus Tavern", url: "music/Dwarven Tavern/Obsidian Halls.mp3" },
-                    { title: "Sparks on the Anvil", artist: "Animus Tavern", url: "music/Dwarven Tavern/Sparks on the Anvil.mp3" },
-                    { title: "The Granite Goblet", artist: "Animus Tavern", url: "music/Dwarven Tavern/The Granite Goblet.mp3" },
-                    { title: "Weight of the Crown", artist: "Animus Tavern", url: "music/Dwarven Tavern/Weight of the Crown.mp3" }
-                ]
-            },
-            "Space Tavern": {
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>`,
-                tracks: [
-                    { title: "Arcadia", artist: "Animus Tavern", url: "music/Space Tavern/Arcadia.mp3" },
-                    { title: "Cassette Tape and Tonic", artist: "Animus Tavern", url: "music/Space Tavern/Cassette Tape and Tonic.mp3" },
-                    { title: "Drink the Solar Wind", artist: "Animus Tavern", url: "music/Space Tavern/Drink the Solar Wind.mp3" },
-                    { title: "Ghosts of the Sector 9", artist: "Animus Tavern", url: "music/Space Tavern/Ghosts of the Sector 9.mp3" },
-                    { title: "Insert Coin to Drink", artist: "Animus Tavern", url: "music/Space Tavern/Insert Coin to Drink.mp3" },
-                    { title: "Laser Jaws", artist: "Animus Tavern", url: "music/Space Tavern/Laser Jaws.mp3" },
-                    { title: "Neon on the Bow", artist: "Animus Tavern", url: "music/Space Tavern/Neon on the Bow.mp3" },
-                    { title: "Neon on the Rock of Bral", artist: "Animus Tavern", url: "music/Space Tavern/Neon on the Rock of Bral.mp3" },
-                    { title: "Pirates Check", artist: "Animus Tavern", url: "music/Space Tavern/Pirates Check.mp3" },
-                    { title: "Singing in the Phlogiston", artist: "Animus Tavern", url: "music/Space Tavern/Singing in the Phlogiston.mp3" },
-                    { title: "Smuggler's Orbit", artist: "Animus Tavern", url: "music/Space Tavern/Smuggler's Orbit.mp3" },
-                    { title: "Starlight Journeys", artist: "Animus Tavern", url: "music/Space Tavern/Starlight Journeys.mp3" },
-                    { title: "System Overload", artist: "Animus Tavern", url: "music/Space Tavern/System Overload.mp3" },
-                    { title: "The Ghost in the Static", artist: "Animus Tavern", url: "music/Space Tavern/The Ghost in the Static.mp3" },
-                    { title: "The Nebula Reef", artist: "Animus Tavern", url: "music/Space Tavern/The Nebula Reef.mp3" },
-                    { title: "Vault-Breaker", artist: "Animus Tavern", url: "music/Space Tavern/Vault-Breaker.mp3" }
+                    { title: "Black Water Swell", artist: "Animus Tavern", url: "music/Human Tavern/Black Water Swell.mp3" },
+                    { title: "Bolted Doors and Black Ale", artist: "Animus Tavern", url: "music/Human Tavern/Bolted Doors and Black Ale.mp3" },
+                    { title: "Bottom of the Barrel", artist: "Animus Tavern", url: "music/Human Tavern/Bottom of the Barrel.mp3" },
+                    { title: "Chairs in the Rafters", artist: "Animus Tavern", url: "music/Human Tavern/Chairs in the Rafters.mp3" },
+                    { title: "Guarded Favours", artist: "Animus Tavern", url: "music/Human Tavern/Guarded Favours.mp3" },
+                    { title: "Heave the Iron", artist: "Animus Tavern", url: "music/Human Tavern/Heave the Iron.mp3" },
+                    { title: "Rowdy Hearth", artist: "Animus Tavern", url: "music/Human Tavern/Rowdy Hearth.mp3" },
+                    { title: "The Chase", artist: "Animus Tavern", url: "music/Human Tavern/The Chase.mp3" },
+                    { title: "The Crooked Crown", artist: "Animus Tavern", url: "music/Human Tavern/The Crooked Crown.mp3" },
+                    { title: "The Mermaid's Coin", artist: "Animus Tavern", url: "music/Human Tavern/The Mermaid's Coin.mp3" },
+                    { title: "The Wandering Wagon", artist: "Animus Tavern", url: "music/Human Tavern/The Wandering Wagon.mp3" }
                 ]
             },
             "Hollow Demsene": {
@@ -855,19 +591,25 @@
                     { title: "Tick of the Trade", artist: "Animus Tavern", url: "music/Hollow Demsene/Tick of the Trade.mp3" }
                 ]
             },
-            "Meet The Creator": {
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+            "Space Tavern": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>`,
                 tracks: [
-                    { title: "Smoke and Mirrors (Babylon Burning)", artist: "Nathan", url: "music/Meet The Creator/01-Smoke and Mirrors (Babylon Burning).mp3" },
-                    { title: "Shoulda Gone Yard (snakes in the grass)", artist: "Nathan", url: "music/Meet The Creator/02-Shoulda Gone Yard (snakes in the grass).mp3" },
-                    { title: "Snake in the Grass 2.0", artist: "Nathan", url: "music/Meet The Creator/03-Snake in the Grass 2.0.mp3" },
-                    { title: "My Confession", artist: "Nathan", url: "music/Meet The Creator/04-My Confession.mp3" },
-                    { title: "My Girls", artist: "Nathan", url: "music/Meet The Creator/05-My Girls.mp3" },
-                    { title: "The Good Things (Lizzy & The Little One)", artist: "Nathan", url: "music/Meet The Creator/06-The Good Things (Lizzy & The Little One).mp3" },
-                    { title: "Ready Made Family", artist: "Nathan", url: "music/Meet The Creator/07-Ready Made Family.mp3" },
-                    { title: "Smoke and Mirrors (The Clarity)", artist: "Nathan", url: "music/Meet The Creator/08-Smoke and Mirrors (The Clarity).mp3" },
-                    { title: "My Shadow, My Light", artist: "Nathan", url: "music/Meet The Creator/My Shadow, My Light.mp3" },
-                    { title: "Meet Nathan", artist: "Nathan", url: "music/Meet The Creator/09-Meet Nathan.mp3" }
+                    { title: "Arcadia", artist: "Animus Tavern", url: "music/Space Tavern/Arcadia.mp3" },
+                    { title: "Cassette Tape and Tonic", artist: "Animus Tavern", url: "music/Space Tavern/Cassette Tape and Tonic.mp3" },
+                    { title: "Drink the Solar Wind", artist: "Animus Tavern", url: "music/Space Tavern/Drink the Solar Wind.mp3" },
+                    { title: "Ghosts of the Sector 9", artist: "Animus Tavern", url: "music/Space Tavern/Ghosts of the Sector 9.mp3" },
+                    { title: "Insert Coin to Drink", artist: "Animus Tavern", url: "music/Space Tavern/Insert Coin to Drink.mp3" },
+                    { title: "Laser Jaws", artist: "Animus Tavern", url: "music/Space Tavern/Laser Jaws.mp3" },
+                    { title: "Neon on the Bow", artist: "Animus Tavern", url: "music/Space Tavern/Neon on the Bow.mp3" },
+                    { title: "Neon on the Rock of Bral", artist: "Animus Tavern", url: "music/Space Tavern/Neon on the Rock of Bral.mp3" },
+                    { title: "Pirates Check", artist: "Animus Tavern", url: "music/Space Tavern/Pirates Check.mp3" },
+                    { title: "Singing in the Phlogiston", artist: "Animus Tavern", url: "music/Space Tavern/Singing in the Phlogiston.mp3" },
+                    { title: "Smuggler's Orbit", artist: "Animus Tavern", url: "music/Space Tavern/Smuggler's Orbit.mp3" },
+                    { title: "Starlight Journeys", artist: "Animus Tavern", url: "music/Space Tavern/Starlight Journeys.mp3" },
+                    { title: "System Overload", artist: "Animus Tavern", url: "music/Space Tavern/System Overload.mp3" },
+                    { title: "The Ghost in the Static", artist: "Animus Tavern", url: "music/Space Tavern/The Ghost in the Static.mp3" },
+                    { title: "The Nebula Reef", artist: "Animus Tavern", url: "music/Space Tavern/The Nebula Reef.mp3" },
+                    { title: "Vault-Breaker", artist: "Animus Tavern", url: "music/Space Tavern/Vault-Breaker.mp3" }
                 ]
             },
             "Funk": {
@@ -954,362 +696,292 @@
                     { title: "Vocal Thummin", artist: "Animus Tavern", url: "music/DnB/Vocal Thummin.mp3" },
                     { title: "Wild Surge", artist: "Animus Tavern", url: "music/DnB/Wild Surge.mp3" }
                 ]
+            },
+            "Meet The Creator": {
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+                tracks: [
+                    { title: "Smoke and Mirrors (Babylon Burning)", artist: "Nathan", url: "music/Meet The Creator/01-Smoke and Mirrors (Babylon Burning).mp3" },
+                    { title: "Shoulda Gone Yard (snakes in the grass)", artist: "Nathan", url: "music/Meet The Creator/02-Shoulda Gone Yard (snakes in the grass).mp3" },
+                    { title: "Snake in the Grass 2.0", artist: "Nathan", url: "music/Meet The Creator/03-Snake in the Grass 2.0.mp3" },
+                    { title: "My Confession", artist: "Nathan", url: "music/Meet The Creator/04-My Confession.mp3" },
+                    { title: "My Girls", artist: "Nathan", url: "music/Meet The Creator/05-My Girls.mp3" },
+                    { title: "The Good Things (Lizzy & The Little One)", artist: "Nathan", url: "music/Meet The Creator/06-The Good Things (Lizzy & The Little One).mp3" },
+                    { title: "Ready Made Family", artist: "Nathan", url: "music/Meet The Creator/07-Ready Made Family.mp3" },
+                    { title: "Smoke and Mirrors (The Clarity)", artist: "Nathan", url: "music/Meet The Creator/08-Smoke and Mirrors (The Clarity).mp3" },
+                    { title: "My Shadow, My Light", artist: "Nathan", url: "music/Meet The Creator/My Shadow, My Light.mp3" },
+                    { title: "Meet Nathan", artist: "Nathan", url: "music/Meet The Creator/09-Meet Nathan.mp3" }
+                ]
             }
         };
 
-        // --- Tabs Logic ---
-        const tabLibraryBtn = document.getElementById('tab-library');
-        const tabQueueBtn = document.getElementById('tab-queue');
+        // =======================================================================
+        // 🔥 INSTANCING: THE "PRIVATE ROOM" SYSTEM 🔥
+        // =======================================================================
+        // 1. We check if Discord injected a secret instance ID into the URL
+        // BUG FIX: Corrected "newSearchParams" to "new URLSearchParams"
+        const urlParams = new URLSearchParams(window.location.search);
+        let instanceId = urlParams.get('instance_id');
         
-        function switchTab(tabName) {
-            tabLibraryBtn.classList.toggle('active', tabName === 'library');
-            tabQueueBtn.classList.toggle('active', tabName === 'queue');
-            
-            document.getElementById('content-library').style.display = tabName === 'library' ? 'flex' : 'none';
-            document.getElementById('content-queue').style.display = tabName === 'queue' ? 'flex' : 'none';
-        }
-
-        tabLibraryBtn.addEventListener('click', () => switchTab('library'));
-        tabQueueBtn.addEventListener('click', () => switchTab('queue'));
-
-        // --- Play All Logic ---
-        document.getElementById('btn-play-all').addEventListener('click', () => {
-            tracks = [];
-            for (const data of Object.values(musicRepository)) {
-                tracks.push(...data.tracks);
-            }
-            shuffleHistory = [];
-            switchTab('queue');
-            loadTrack(0, true);
-        });
-
-        // --- Clear Queue Logic ---
-        btnClearQueue.addEventListener('click', () => {
-            tracks = [];
-            currentTrackIndex = -1;
-            shuffleHistory = [];
-            audio.pause();
-            audio.src = '';
-            currentLoadedUrl = '';
-            isPlaying = false;
-            
-            updatePlayIcon();
-            trackTitleUI.textContent = "No Track Loaded";
-            trackArtistUI.textContent = "Awaiting Input...";
-            timeCurrent.textContent = "0:00";
-            timeTotal.textContent = "0:00";
-            progressBar.style.width = "0%";
-            
-            renderPlaylist();
-            
-            // Push Clear event to cloud
-            pushStateToCloud(true);
-        });
-
-        // --- Render Repository Genres ---
-        function renderLibrary() {
-            genreContainer.innerHTML = '';
-            for (const [genreName, data] of Object.entries(musicRepository)) {
-                const btnWrapper = document.createElement('div');
-                btnWrapper.className = 'genre-btn';
-                btnWrapper.style.padding = '8px 12px';
-                btnWrapper.style.cursor = 'default';
-                
-                // Main click area (Replace Queue)
-                const mainClick = document.createElement('div');
-                mainClick.className = 'flex-grow flex justify-between items-center';
-                mainClick.style.cursor = 'pointer';
-                mainClick.style.paddingRight = '12px';
-                mainClick.style.borderRight = '1px solid rgba(156, 163, 175, 0.2)';
-                mainClick.title = `Play ${genreName}`;
-                mainClick.innerHTML = `
-                    <div class="genre-title">
-                        <span style="color: #a855f7;">${data.icon}</span>
-                        ${genreName}
-                    </div>
-                    <div class="genre-count">${data.tracks.length} Tracks</div>
-                `;
-                mainClick.addEventListener('click', () => loadGenreToQueue(genreName));
-
-                // Plus Button (Append to Queue)
-                const addBtn = document.createElement('button');
-                addBtn.className = 'text-gray hover:text-fuchsia transition-colors';
-                addBtn.style.padding = '4px 0 4px 12px';
-                addBtn.title = `Add ${genreName} to Current Queue`;
-                addBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
-                
-                addBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    appendGenreToQueue(genreName);
-                });
-
-                btnWrapper.appendChild(mainClick);
-                btnWrapper.appendChild(addBtn);
-                genreContainer.appendChild(btnWrapper);
+        // 2. If we are running in a regular web browser with no URL params, we generate a persistent room ID for testing
+        if (!instanceId) {
+            instanceId = localStorage.getItem('animus_tavern_instance');
+            if (!instanceId) {
+                instanceId = 'room_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('animus_tavern_instance', instanceId);
             }
         }
 
-        function loadGenreToQueue(genreName) {
-            const genreData = musicRepository[genreName];
-            if (!genreData || genreData.tracks.length === 0) return;
-
-            tracks = [...genreData.tracks];
-            shuffleHistory = [];
+        // --- Unlock Audio Engine Overlay ---
+        document.getElementById('interaction-overlay').addEventListener('click', function() {
+            this.style.opacity = '0';
+            setTimeout(() => this.style.display = 'none', 500);
             
-            switchTab('queue');
-            loadTrack(0, true);
-        }
-
-        function appendGenreToQueue(genreName) {
-            const genreData = musicRepository[genreName];
-            if (!genreData || genreData.tracks.length === 0) return;
-
-            const wasEmpty = tracks.length === 0;
-            
-            tracks.push(...genreData.tracks);
-            
-            switchTab('queue');
-            renderPlaylist();
-            
-            if (wasEmpty) {
-                loadTrack(0, true);
-            } else {
-                pushStateToCloud(); // Sync new tracks immediately
-            }
-        }
-
-        renderLibrary();
-
-        // --- Dragging Logic ---
-        function makeDraggable(modalId) {
-            const modal = document.getElementById(modalId);
-            const handle = modal.querySelector('.drag-handle');
-            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-
-            modal.addEventListener('mousedown', () => bringToFront(modal));
-            modal.addEventListener('touchstart', () => bringToFront(modal), {passive: true});
-
-            handle.addEventListener('mousedown', dragStart);
-            handle.addEventListener('touchstart', dragStart, {passive: false});
-
-            function bringToFront(element) {
-                zIndexCounter++;
-                element.style.zIndex = zIndexCounter;
-            }
-
-            function dragStart(e) {
-                bringToFront(modal);
-                if (e.type === 'touchstart') {
-                    pos3 = e.touches[0].clientX;
-                    pos4 = e.touches[0].clientY;
-                    document.addEventListener('touchmove', dragAction, {passive: false});
-                    document.addEventListener('touchend', dragEnd);
-                } else {
-                    e.preventDefault();
-                    pos3 = e.clientX;
-                    pos4 = e.clientY;
-                    document.onmouseup = dragEnd;
-                    document.onmousemove = dragAction;
-                }
-            }
-
-            function dragAction(e) {
-                if (e.type === 'touchmove') e.preventDefault();
-                let clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-                let clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-
-                pos1 = pos3 - clientX;
-                pos2 = pos4 - clientY;
-                pos3 = clientX;
-                pos4 = clientY;
-                
-                let newTop = modal.offsetTop - pos2;
-                let newLeft = modal.offsetLeft - pos1;
-
-                if(newTop < 40) newTop = 40;
-                if(newTop > window.innerHeight - 50) newTop = window.innerHeight - 50;
-                
-                modal.style.top = newTop + "px";
-                modal.style.left = newLeft + "px";
-            }
-
-            function dragEnd() {
-                document.onmouseup = null;
-                document.onmousemove = null;
-                document.removeEventListener('touchmove', dragAction);
-                document.removeEventListener('touchend', dragEnd);
-            }
-        }
-
-        makeDraggable('modal-player');
-        makeDraggable('modal-queue');
-
-        window.addEventListener('load', () => {
-            const player = document.getElementById('modal-player');
-            const queue = document.getElementById('modal-queue');
-
-            if (window.innerWidth < 800) {
-                player.style.left = '50%';
-                player.style.transform = 'translateX(-50%)';
-                player.style.top = '60px';
-                
-                queue.style.left = '50%';
-                queue.style.transform = 'translateX(-50%)';
-                queue.style.top = '120px';
-            } else {
-                const totalWidth = player.offsetWidth + 20 + queue.offsetWidth;
-                const startLeft = (window.innerWidth - totalWidth) / 2;
-                const topPos = (window.innerHeight - queue.offsetHeight) / 2;
-                
-                player.style.left = startLeft + 'px';
-                player.style.top = Math.max(60, topPos) + 'px';
-                
-                queue.style.left = (startLeft + player.offsetWidth + 20) + 'px';
-                queue.style.top = Math.max(60, topPos) + 'px';
-            }
-        });
-
-        // --- Audio & File Logic ---
-        function processFile(file) {
-            if (file.type.startsWith("audio/") || file.name.toLowerCase().match(/\.(mp3|wav|ogg)$/)) {
-                const objectUrl = URL.createObjectURL(file);
-                
-                let title = file.name.replace(/\.[^/.]+$/, "");
-                let artist = "Animus Tavern";
-                
-                if (title.includes('-')) {
-                    const parts = title.split('-');
-                    artist = parts[0].trim();
-                    title = parts.slice(1).join('-').trim();
-                }
-
-                tracks.push({
-                    title: title,
-                    artist: artist,
-                    url: objectUrl,
-                    filename: file.name
-                });
-
-                renderPlaylist();
-                if (currentTrackIndex === -1 && tracks.length === 1) {
-                    loadTrack(0);
-                } else {
-                    pushStateToCloud();
-                }
-            }
-        }
-
-        fileInput.addEventListener('change', (e) => {
-            const files = e.target.files;
-            if (files.length === 0) return;
-            Array.from(files).forEach(processFile);
-            fileInput.value = ''; 
-        });
-
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
-        });
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, () => uploadZone.classList.add('dragover'), false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, () => uploadZone.classList.remove('dragover'), false);
-        });
-
-        uploadZone.addEventListener('drop', (e) => {
-            const items = e.dataTransfer.items;
-            if (items) {
-                for (let i = 0; i < items.length; i++) {
-                    const item = items[i];
-                    if (item.kind === 'file') {
-                        const entry = item.webkitGetAsEntry();
-                        if (entry) traverseFileTree(entry);
+            audio.play().then(() => {
+                if (!isPlaying) {
+                    audio.pause();
+                } else if (lastSyncedData) {
+                    const expectedPlaybackTime = (lastSyncedData.playbackTime || 0) + ((Date.now() - lastSyncedData.timestamp) / 1000);
+                    if (expectedPlaybackTime < audio.duration || isNaN(audio.duration)) {
+                        audio.currentTime = expectedPlaybackTime;
                     }
                 }
-            } else {
-                const files = e.dataTransfer.files;
-                Array.from(files).forEach(processFile);
-            }
+            }).catch(e => console.log("Audio unlocked:", e));
         });
 
-        function traverseFileTree(item, path) {
-            path = path || "";
-            if (item.isFile) {
-                item.file(function(file) { processFile(file); });
-            } else if (item.isDirectory) {
-                let dirReader = item.createReader();
-                dirReader.readEntries(function(entries) {
-                    for (let i = 0; i < entries.length; i++) {
-                        traverseFileTree(entries[i], path + item.name + "/");
+        // =======================================================================
+        // 🔥 MULTIPLAYER SETUP (THE CSP TUNNEL BYPASS) 🔥 
+        // =======================================================================
+        const projectId = "akashic-tome-27d3f";
+        const defaultAppId = 'animus-vtt-system';
+        const apiKey = "AIzaSyD6Nr96oE7v-Hylodd84nvT8Iq2abrW1Zc"; 
+        
+        // Display the room ID in the top bar
+        const roomDisplay = instanceId.startsWith('room_') ? 'Global Test' : instanceId.substring(0, 8);
+        document.getElementById('instance-status').textContent = `Room: ${roomDisplay}`;
+        
+        // The exact Google Cloud Document path - NOW INSTANCED!
+        const docPath = `projects/${projectId}/databases/(default)/documents/artifacts/${defaultAppId}/public/data/vttState/music_${instanceId}`;
+        
+        // This detects if we are trapped inside Discord's invisible sandbox
+        const isDiscord = window.location.hostname.includes('discordsays.com');
+        
+        // If we are in Discord, route through the '/firestore' tunnel. Otherwise, go direct.
+        const firebaseBaseUrl = isDiscord ? '/firestore' : 'https://firestore.googleapis.com';
+        
+        const docUrl = `${firebaseBaseUrl}/v1/${docPath}`;
+
+        // 1. Polling System (Replaces the WebSocket listener)
+        async function pollCloud() {
+            if (isRemoteUpdate) return;
+            try {
+                // FIXED: Use headers to bypass cache instead of URL parameters so Google doesn't reject it!
+                // ADDED: Cache-buster token to absolutely prevent aggressive browser caching
+                const response = await fetch(`${docUrl}?key=${apiKey}&nocache=${Date.now()}`, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
                     }
                 });
-            }
-        }
-
-        playBtn.addEventListener('click', togglePlay);
-        prevBtn.addEventListener('click', () => playPrev());
-        nextBtn.addEventListener('click', () => playNext(false));
-        shuffleBtn.addEventListener('click', toggleShuffle);
-        repeatBtn.addEventListener('click', toggleRepeat);
-        
-        audio.addEventListener('timeupdate', updateProgress);
-        audio.addEventListener('loadedmetadata', () => {
-            timeTotal.textContent = formatTime(audio.duration);
-        });
-        audio.addEventListener('ended', () => {
-            if (tracks.length > 0) {
-                playNext(true);
-            }
-        });
-
-        progressContainer.addEventListener('click', (e) => {
-            if (tracks.length === 0 || isNaN(audio.duration)) return;
-            const width = progressContainer.clientWidth;
-            const clickX = e.offsetX;
-            audio.currentTime = (clickX / width) * audio.duration;
-            
-            // PUSH TO CLOUD: If you skip ahead in the song, force everyone else to skip ahead too!
-            pushStateToCloud();
-        });
-
-        volumeSlider.addEventListener('input', (e) => {
-            audio.volume = e.target.value;
-        });
-
-        function renderPlaylist() {
-            trackCountUI.textContent = `${tracks.length} TRKS`;
-            
-            if (tracks.length === 0) {
-                playlistUI.innerHTML = `
-                    <div class="empty-state">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.5;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                        <p class="text-sm">Queue is empty</p>
-                    </div>`;
-                return;
-            }
-
-            playlistUI.innerHTML = '';
-            tracks.forEach((track, index) => {
-                const isActive = index === currentTrackIndex;
-                const trackEl = document.createElement('div');
-                trackEl.className = `track-item ${isActive ? 'active' : ''}`;
-                trackEl.onclick = () => loadTrack(index, true);
-
-                trackEl.innerHTML = `
-                    <div class="track-icon">
-                        ${isActive && isPlaying ? 
-                            `<div class="active-bars"><div></div><div></div><div></div></div>` 
-                            : `<div style="color: #9ca3af;">${iconMusic}</div>`
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        if(cloudStatus.textContent !== "Cloud: Online") {
+                            cloudStatus.textContent = "Cloud: Online";
+                            cloudStatus.style.color = "#4ade80";
                         }
-                    </div>
-                    <div class="flex-grow truncate">
-                        <h4 class="font-semibold text-xs truncate ${isActive ? 'text-fuchsia' : 'text-white'}">${track.title}</h4>
-                        <p class="text-xs text-gray truncate" style="margin-top: 2px;">${track.artist}</p>
-                    </div>
-                `;
-                playlistUI.appendChild(trackEl);
+                        return; // DB just hasn't been created yet, this is normal for a new room!
+                    }
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errText.substring(0, 50)}`);
+                }
+
+                const json = await response.json();
+                
+                if (json.fields && json.fields.payload && json.fields.payload.stringValue) {
+                    const data = JSON.parse(json.fields.payload.stringValue);
+                    
+                    const incomingSyncId = data.syncId || data.timestamp;
+                    if (data.sender !== userId && incomingSyncId > lastProcessedTimestamp) {
+                        lastProcessedTimestamp = incomingSyncId;
+                        handleRemoteSync(data);
+                    }
+                    
+                    if(cloudStatus.textContent !== "Cloud: Online") {
+                        cloudStatus.textContent = "Cloud: Online";
+                        cloudStatus.style.color = "#4ade80";
+                    }
+                }
+            } catch (e) {
+                console.error("Polling error:", e);
+                let msg = e.message || "Network Error";
+                if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) msg = "CSP Tunnel Blocked";
+                cloudStatus.textContent = "Err: " + msg.substring(0, 20);
+                cloudStatus.style.color = "#ef4444";
+            }
+        }
+
+        // Poll Google every 2 seconds to check if your brother pushed a button
+        setInterval(pollCloud, 2000);
+        pollCloud();
+
+        // 2. Upload System (Replaces setDoc)
+        async function pushStateToCloud(forceClear = false) {
+            if (isRemoteUpdate) return; 
+
+            const cloudSafeTracks = tracks.map(t => {
+                if(t.url.startsWith('blob:')) return { ...t, url: "" }; 
+                return t;
+            });
+
+            const state = {
+                tracks: forceClear ? [] : cloudSafeTracks,
+                currentTrackIndex: forceClear ? -1 : currentTrackIndex,
+                isPlaying: forceClear ? false : isPlaying,
+                timestamp: Date.now(),
+                syncId: Date.now(), // Magic bullet for forcing exact updates instantly
+                playbackTime: forceClear ? 0 : audio.currentTime,
+                sender: userId
+            };
+
+            try {
+                cloudStatus.textContent = "Cloud: Uploading...";
+                cloudStatus.style.color = "#fbbf24"; 
+
+                // RESTORED FIX: We must include the specific Document Name to create brand new rooms!
+                const body = {
+                    name: docPath,
+                    fields: {
+                        payload: { stringValue: JSON.stringify(state) }
+                    }
+                };
+
+                // RESTORED FIX: We must use updateMask so Google knows we are doing a safe Upsert!
+                const response = await fetch(`${docUrl}?key=${apiKey}&updateMask.fieldPaths=payload`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errText.substring(0, 50)}`);
+                }
+
+                cloudStatus.textContent = "Cloud: Sent!";
+                cloudStatus.style.color = "#d946ef"; 
+                setTimeout(() => {
+                    cloudStatus.textContent = "Cloud: Online";
+                    cloudStatus.style.color = "#4ade80";
+                }, 1500);
+
+            } catch(e) {
+                console.error("Failed to push state:", e);
+                let msg = e.message || "Upload Failed";
+                if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) msg = "CSP Tunnel Blocked";
+                cloudStatus.textContent = "Err: " + msg.substring(0, 20);
+                cloudStatus.style.color = "#ef4444";
+            }
+        }
+
+        function handleRemoteSync(data) {
+            isRemoteUpdate = true; 
+            
+            try {
+                cloudStatus.textContent = "Cloud: Syncing...";
+                cloudStatus.style.color = "#22d3ee"; 
+                
+                lastSyncedData = data; 
+
+                tracks = data.tracks || [];
+                currentTrackIndex = data.currentTrackIndex !== undefined ? data.currentTrackIndex : -1;
+                renderPlaylist();
+
+                if (currentTrackIndex >= 0 && tracks.length > 0) {
+                    const track = tracks[currentTrackIndex];
+                    const expectedPlaybackTime = (data.playbackTime || 0) + (data.isPlaying ? (Date.now() - data.timestamp) / 1000 : 0);
+
+                    if (track.url === "") {
+                         trackTitleUI.textContent = track.title + " (Local File)";
+                         trackArtistUI.textContent = "Cannot sync local files";
+                         audio.pause();
+                         isPlaying = false;
+                         updatePlayIcon();
+                         return;
+                    }
+
+                    if (currentLoadedUrl !== track.url) {
+                        audio.src = track.url;
+                        currentLoadedUrl = track.url;
+                        trackTitleUI.textContent = track.title;
+                        trackArtistUI.textContent = track.artist;
+                        
+                        albumArt.classList.add('pop');
+                        setTimeout(() => albumArt.classList.remove('pop'), 200);
+                        
+                        audio.addEventListener('loadedmetadata', function onLoaded() {
+                            if (expectedPlaybackTime > 0) audio.currentTime = expectedPlaybackTime;
+                            audio.removeEventListener('loadedmetadata', onLoaded);
+                        });
+                    } else {
+                        if (Math.abs(audio.currentTime - expectedPlaybackTime) > 2) {
+                            audio.currentTime = expectedPlaybackTime;
+                        }
+                    }
+
+                    if (data.isPlaying !== isPlaying) {
+                        if (data.isPlaying) {
+                            audio.play().catch(e => console.warn("Audio waiting for Tavern Overlay click."));
+                            isPlaying = true;
+                        } else {
+                            audio.pause();
+                            isPlaying = false;
+                        }
+                        updatePlayIcon();
+                    }
+                } else {
+                    audio.pause();
+                    audio.src = '';
+                    currentLoadedUrl = '';
+                    isPlaying = false;
+                    updatePlayIcon();
+                    trackTitleUI.textContent = "No Track Loaded";
+                    trackArtistUI.textContent = "Awaiting Input...";
+                }
+            } finally {
+                isRemoteUpdate = false; 
+            }
+        }
+
+        // --- Clock Update ---
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }, 1000);
+
+        // --- App Refresh ---
+        document.getElementById('btn-refresh').addEventListener('click', () => {
+            window.location.reload();
+        });
+
+        // --- Force Sync Logic ---
+        const forceSyncBtn = document.getElementById('btn-force-sync');
+        if (forceSyncBtn) {
+            forceSyncBtn.addEventListener('click', () => {
+                // Instantly pushes current state to cloud with a brand new syncId,
+                // forcing all connected clients to align with your exact time.
+                pushStateToCloud();
+                
+                // Visual feedback pop
+                forceSyncBtn.style.transform = 'scale(0.95)';
+                forceSyncBtn.style.background = '#fff';
+                forceSyncBtn.style.color = '#d946ef';
+                setTimeout(() => {
+                    forceSyncBtn.style.transform = 'scale(1)';
+                    forceSyncBtn.style.background = 'rgba(217, 70, 239, 0.4)';
+                    forceSyncBtn.style.color = '#fff';
+                }, 200);
             });
         }
 
@@ -1458,6 +1130,205 @@
             return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
         
+        // =======================================================================
+        // 🔥 UI LOGIC & EVENT LISTENERS (TABS, LIBRARY, QUEUE) 🔥
+        // =======================================================================
+        
+        // --- Tab Navigation ---
+        const tabLibraryBtn = document.getElementById('tab-library');
+        const tabQueueBtn = document.getElementById('tab-queue');
+        const contentLibrary = document.getElementById('content-library');
+        const contentQueue = document.getElementById('content-queue');
+
+        tabLibraryBtn.addEventListener('click', () => {
+            tabLibraryBtn.classList.add('active');
+            tabQueueBtn.classList.remove('active');
+            contentLibrary.style.display = 'flex';
+            contentQueue.style.display = 'none';
+        });
+
+        tabQueueBtn.addEventListener('click', () => {
+            tabQueueBtn.classList.add('active');
+            tabLibraryBtn.classList.remove('active');
+            contentQueue.style.display = 'flex';
+            contentLibrary.style.display = 'none';
+        });
+
+        // --- Render Library ---
+        function renderLibrary() {
+            genreContainer.innerHTML = '';
+            for (const [genreName, genreData] of Object.entries(musicRepository)) {
+                const btn = document.createElement('button');
+                btn.className = 'genre-btn';
+                btn.innerHTML = `
+                    <div class="genre-title">
+                        <span style="color: #9ca3af;">${genreData.icon}</span>
+                        ${genreName}
+                    </div>
+                    <div class="genre-count">${genreData.tracks.length}</div>
+                `;
+                btn.onclick = () => loadGenreToQueue(genreName);
+                genreContainer.appendChild(btn);
+            }
+        }
+
+        // --- Load Genre into Queue ---
+        function loadGenreToQueue(genreName) {
+            const newTracks = musicRepository[genreName].tracks.map(t => ({...t}));
+            tracks = [...tracks, ...newTracks];
+            
+            if (tracks.length === newTracks.length) {
+                loadTrack(0, true);
+            } else {
+                renderPlaylist();
+                pushStateToCloud();
+            }
+            tabQueueBtn.click();
+        }
+
+        // --- Play All Taverns Button ---
+        document.getElementById('btn-play-all').addEventListener('click', () => {
+            let allTracks = [];
+            for (const genreData of Object.values(musicRepository)) {
+                allTracks = [...allTracks, ...genreData.tracks];
+            }
+            tracks = [...tracks, ...allTracks];
+            
+            if (tracks.length === allTracks.length) {
+                loadTrack(0, true);
+            } else {
+                renderPlaylist();
+                pushStateToCloud();
+            }
+            tabQueueBtn.click();
+        });
+
+        // --- Render Playlist ---
+        function renderPlaylist() {
+            trackCountUI.textContent = `${tracks.length} TRKS`;
+            if (tracks.length === 0) {
+                playlistUI.innerHTML = `
+                    <div class="empty-state">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.5;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                        <p class="text-sm">Queue is empty</p>
+                    </div>`;
+                return;
+            }
+
+            playlistUI.innerHTML = '';
+            tracks.forEach((track, index) => {
+                const item = document.createElement('div');
+                item.className = `track-item ${index === currentTrackIndex ? 'active' : ''}`;
+                
+                let visualizer = index === currentTrackIndex && isPlaying 
+                    ? `<div class="active-bars"><div></div><div></div><div></div></div>`
+                    : iconMusic;
+
+                item.innerHTML = `
+                    <div class="track-icon ${index === currentTrackIndex ? 'text-fuchsia' : 'text-gray'}">
+                        ${visualizer}
+                    </div>
+                    <div class="flex-grow truncate">
+                        <div class="text-sm font-semibold truncate ${index === currentTrackIndex ? 'text-fuchsia' : 'text-white'}">${track.title}</div>
+                        <div class="text-xs text-gray truncate">${track.artist}</div>
+                    </div>
+                    <button class="text-gray hover:text-fuchsia px-2" onclick="event.stopPropagation(); window.removeTrack(${index})">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                `;
+                
+                item.onclick = () => loadTrack(index, true);
+                playlistUI.appendChild(item);
+            });
+        }
+
+        // --- Remove Track from Queue ---
+        window.removeTrack = function(index) {
+            tracks.splice(index, 1);
+            if (index === currentTrackIndex) {
+                if (tracks.length === 0) {
+                    currentTrackIndex = -1;
+                    audio.pause();
+                    isPlaying = false;
+                    updatePlayIcon();
+                    trackTitleUI.textContent = "No Track Loaded";
+                    trackArtistUI.textContent = "Awaiting Input...";
+                } else {
+                    if (currentTrackIndex >= tracks.length) currentTrackIndex = 0;
+                    loadTrack(currentTrackIndex, isPlaying);
+                }
+            } else if (index < currentTrackIndex) {
+                currentTrackIndex--;
+            }
+            renderPlaylist();
+            pushStateToCloud();
+        };
+
+        // --- Clear Entire Queue ---
+        btnClearQueue.addEventListener('click', () => {
+            tracks = [];
+            currentTrackIndex = -1;
+            audio.pause();
+            audio.src = '';
+            currentLoadedUrl = '';
+            isPlaying = false;
+            updatePlayIcon();
+            trackTitleUI.textContent = "No Track Loaded";
+            trackArtistUI.textContent = "Awaiting Input...";
+            renderPlaylist();
+            pushStateToCloud(true);
+        });
+
+        // --- Drag & Drop MP3 Uploading ---
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+        uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('dragover'); });
+        uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+
+        function handleFiles(files) {
+            const newTracks = [];
+            for (const file of Array.from(files)) {
+                if (file.type.startsWith('audio/')) {
+                    const url = URL.createObjectURL(file);
+                    const title = file.name.replace(/\.[^/.]+$/, "");
+                    newTracks.push({ title: title, artist: "Local File", url: url });
+                }
+            }
+            if (newTracks.length > 0) {
+                tracks = [...tracks, ...newTracks];
+                if (currentTrackIndex === -1) loadTrack(0, true);
+                else renderPlaylist();
+                pushStateToCloud();
+                tabQueueBtn.click();
+            }
+        }
+
+        // --- Audio & Media Control Listeners ---
+        audio.addEventListener('timeupdate', updateProgress);
+        audio.addEventListener('ended', () => playNext(true));
+
+        progressContainer.addEventListener('click', (e) => {
+            if (isNaN(audio.duration)) return;
+            const rect = progressContainer.getBoundingClientRect();
+            const percent = (e.clientX - rect.left) / rect.width;
+            audio.currentTime = percent * audio.duration;
+            pushStateToCloud();
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            audio.volume = e.target.value;
+        });
+
+        playBtn.addEventListener('click', togglePlay);
+        prevBtn.addEventListener('click', playPrev);
+        nextBtn.addEventListener('click', () => playNext(false));
+        shuffleBtn.addEventListener('click', toggleShuffle);
+        repeatBtn.addEventListener('click', toggleRepeat);
+
+        // Initialize UI State
+        renderLibrary();
+        renderPlaylist();
+
         // --- Discord Voice Channel Connect Logic ---
         const DISCORD_CLIENT_ID = '1478929818694189076';
         let discordSdk;
