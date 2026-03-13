@@ -769,14 +769,11 @@
         async function triggerSnapshotFetch() {
             if (isRemoteUpdate) return;
             try {
-                // Aggressive cache breaking headers
+                // We remove the custom Cache-Control headers because they force a CORS 
+                // Preflight (OPTIONS) request, which Discord's Proxy actively blocks!
+                // The nocache URL parameter is more than enough to break the cache.
                 const response = await fetch(`${docUrl}?key=${apiKey}&nocache=${Date.now()}`, {
-                    method: 'GET',
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
+                    method: 'GET'
                 });
                 
                 if (!response.ok) {
