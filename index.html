@@ -777,10 +777,18 @@
             this.style.opacity = '0';
             setTimeout(() => this.style.display = 'none', 500);
             
+            // WARMUP FIX: If no track is loaded yet, browsers reject play() and fail to unlock audio.
+            // We give it a tiny silent WAV clip to force the unlock successfully.
+            let wasEmpty = false;
+            if (!audio.getAttribute('src')) {
+                wasEmpty = true;
+                audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+            }
+
             audio.play().then(() => {
                 if (!isPlaying) {
                     audio.pause();
-                } else if (lastSyncedData) {
+                } else if (lastSyncedData && !wasEmpty) {
                     const expectedPlaybackTime = (lastSyncedData.playbackTime || 0) + ((Date.now() - lastSyncedData.timestamp) / 1000);
                     if (expectedPlaybackTime < audio.duration || isNaN(audio.duration)) {
                         audio.currentTime = expectedPlaybackTime;
@@ -955,6 +963,7 @@
                          return;
                     }
 
+                    let trackChanged = false;
                     if (currentLoadedUrl !== track.url) {
                         audio.src = track.url;
                         currentLoadedUrl = track.url;
@@ -968,13 +977,15 @@
                             if (expectedPlaybackTime > 0) audio.currentTime = expectedPlaybackTime;
                             audio.removeEventListener('loadedmetadata', onLoaded);
                         });
+                        trackChanged = true;
                     } else {
                         if (Math.abs(audio.currentTime - expectedPlaybackTime) > 2) {
                             audio.currentTime = expectedPlaybackTime;
                         }
                     }
 
-                    if (data.isPlaying !== isPlaying) {
+                    // FIX: Force play if the play state changed, OR if the track changed while already playing!
+                    if (data.isPlaying !== isPlaying || (trackChanged && data.isPlaying)) {
                         if (data.isPlaying) {
                             audio.play().catch(e => console.warn("Audio waiting for Tavern Overlay click."));
                             isPlaying = true;
