@@ -231,7 +231,7 @@
         <div class="flex items-center gap-2">
             <!-- Discord SVG Icon -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
-            <span class="font-semibold text-white">Animus Tavern Player v3.2</span>
+            <span class="font-semibold text-white">Animus Tavern Player v3.2.1</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
             <span id="instance-status" style="color: #9ca3af;" class="text-xs font-mono">Room: ---</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
@@ -826,63 +826,70 @@
         setInterval(pollCloud, 2000);
         pollCloud();
 
-        // 2. Upload System (Replaces setDoc)
+        // 2. Upload System (Replaces setDoc) - WITH DEBOUNCE
+        let pushTimeout = null;
         async function pushStateToCloud(forceClear = false) {
             if (isRemoteUpdate) return; 
 
-            const cloudSafeTracks = tracks.map(t => {
-                if(t.url.startsWith('blob:')) return { ...t, url: "" }; 
-                return t;
-            });
-
-            const state = {
-                tracks: forceClear ? [] : cloudSafeTracks,
-                currentTrackIndex: forceClear ? -1 : currentTrackIndex,
-                isPlaying: forceClear ? false : isPlaying,
-                timestamp: Date.now(),
-                syncId: Date.now(), // Magic bullet for forcing exact updates instantly
-                playbackTime: forceClear ? 0 : audio.currentTime,
-                sender: userId
-            };
-
-            try {
-                cloudStatus.textContent = "Cloud: Uploading...";
-                cloudStatus.style.color = "#fbbf24"; 
-
-                // RESTORED FIX: We must include the specific Document Name to create brand new rooms!
-                const body = {
-                    name: docPath,
-                    fields: {
-                        payload: { stringValue: JSON.stringify(state) }
-                    }
-                };
-
-                // RESTORED FIX: We must use updateMask so Google knows we are doing a safe Upsert!
-                const response = await fetch(`${docUrl}?key=${apiKey}&updateMask.fieldPaths=payload`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+            // Clear any pending uploads if the user clicks really fast
+            if (pushTimeout) clearTimeout(pushTimeout);
+            
+            // Wait 100ms before uploading to prevent race conditions & network flooding
+            pushTimeout = setTimeout(async () => {
+                const cloudSafeTracks = tracks.map(t => {
+                    if(t.url.startsWith('blob:')) return { ...t, url: "" }; 
+                    return t;
                 });
 
-                if (!response.ok) {
-                    const errText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errText.substring(0, 50)}`);
+                const state = {
+                    tracks: forceClear ? [] : cloudSafeTracks,
+                    currentTrackIndex: forceClear ? -1 : currentTrackIndex,
+                    isPlaying: forceClear ? false : isPlaying,
+                    timestamp: Date.now(),
+                    syncId: Date.now(), // Magic bullet for forcing exact updates instantly
+                    playbackTime: forceClear ? 0 : audio.currentTime,
+                    sender: userId
+                };
+
+                try {
+                    cloudStatus.textContent = "Cloud: Uploading...";
+                    cloudStatus.style.color = "#fbbf24"; 
+
+                    // RESTORED FIX: We must include the specific Document Name to create brand new rooms!
+                    const body = {
+                        name: docPath,
+                        fields: {
+                            payload: { stringValue: JSON.stringify(state) }
+                        }
+                    };
+
+                    // RESTORED FIX: We must use updateMask so Google knows we are doing a safe Upsert!
+                    const response = await fetch(`${docUrl}?key=${apiKey}&updateMask.fieldPaths=payload`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${errText.substring(0, 50)}`);
+                    }
+
+                    cloudStatus.textContent = "Cloud: Sent!";
+                    cloudStatus.style.color = "#d946ef"; 
+                    setTimeout(() => {
+                        cloudStatus.textContent = "Cloud: Online";
+                        cloudStatus.style.color = "#4ade80";
+                    }, 1500);
+
+                } catch(e) {
+                    console.error("Failed to push state:", e);
+                    let msg = e.message || "Upload Failed";
+                    if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) msg = "CSP Tunnel Blocked";
+                    cloudStatus.textContent = "Err: " + msg.substring(0, 20);
+                    cloudStatus.style.color = "#ef4444";
                 }
-
-                cloudStatus.textContent = "Cloud: Sent!";
-                cloudStatus.style.color = "#d946ef"; 
-                setTimeout(() => {
-                    cloudStatus.textContent = "Cloud: Online";
-                    cloudStatus.style.color = "#4ade80";
-                }, 1500);
-
-            } catch(e) {
-                console.error("Failed to push state:", e);
-                let msg = e.message || "Upload Failed";
-                if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) msg = "CSP Tunnel Blocked";
-                cloudStatus.textContent = "Err: " + msg.substring(0, 20);
-                cloudStatus.style.color = "#ef4444";
-            }
+            }, 100);
         }
 
         function handleRemoteSync(data) {
@@ -911,7 +918,9 @@
                          return;
                     }
 
+                    // --- THE OVERHAULED LOGIC PLAYBACK FIX ---
                     if (currentLoadedUrl !== track.url) {
+                        // 1. The song changed!
                         audio.src = track.url;
                         currentLoadedUrl = track.url;
                         trackTitleUI.textContent = track.title;
@@ -922,24 +931,33 @@
                         
                         audio.addEventListener('loadedmetadata', function onLoaded() {
                             if (expectedPlaybackTime > 0) audio.currentTime = expectedPlaybackTime;
+                            
+                            // FIX: If it's supposed to be playing, explicitly force it to play right now
+                            if (data.isPlaying) {
+                                audio.play().catch(e => console.warn("Audio waiting for Tavern Overlay click."));
+                            }
                             audio.removeEventListener('loadedmetadata', onLoaded);
                         });
                     } else {
+                        // 2. The song is the same, just sync the time
                         if (Math.abs(audio.currentTime - expectedPlaybackTime) > 2) {
                             audio.currentTime = expectedPlaybackTime;
                         }
+                        
+                        // FIX: If it's the exact same song, but paused locally and supposed to be playing
+                        if (data.isPlaying && audio.paused) {
+                            audio.play().catch(e => console.warn("Audio waiting for Tavern Overlay click."));
+                        }
                     }
 
-                    if (data.isPlaying !== isPlaying) {
-                        if (data.isPlaying) {
-                            audio.play().catch(e => console.warn("Audio waiting for Tavern Overlay click."));
-                            isPlaying = true;
-                        } else {
-                            audio.pause();
-                            isPlaying = false;
-                        }
-                        updatePlayIcon();
+                    // FIX: Ensure the pause state is strictly followed
+                    if (!data.isPlaying && !audio.paused) {
+                        audio.pause();
                     }
+                    
+                    isPlaying = data.isPlaying;
+                    updatePlayIcon();
+
                 } else {
                     audio.pause();
                     audio.src = '';
