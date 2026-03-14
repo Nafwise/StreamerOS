@@ -207,6 +207,13 @@
         .genre-btn:hover { background: rgba(88, 28, 135, 0.4); border-color: #d946ef; transform: translateY(-1px); }
         .genre-title { font-weight: 600; color: #e5e7eb; display: flex; align-items: center; gap: 8px; }
         .genre-count { font-size: 10px; font-family: monospace; background: rgba(15, 10, 25, 0.8); padding: 2px 6px; border-radius: 4px; color: #d946ef; }
+
+        /* EQ UI */
+        .eq-slider-container { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .eq-slider { -webkit-appearance: none; width: 100px; height: 4px; background: #374151; border-radius: 2px; outline: none; cursor: pointer; transform: rotate(-90deg); margin: 40px 0; }
+        .eq-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #22d3ee; cursor: pointer; box-shadow: 0 0 10px rgba(34, 211, 238, 0.5); }
+        .eq-label { font-size: 10px; font-weight: bold; color: #9ca3af; letter-spacing: 0.1em; text-transform: uppercase; }
+        .eq-value { font-size: 10px; font-family: monospace; color: #22d3ee; }
     </style>
 </head>
 <body>
@@ -223,8 +230,8 @@
     <!-- Synapse Trippy Background -->
     <canvas id="synapse-canvas" class="synapse-canvas"></canvas>
 
-    <!-- Hidden Audio Element -->
-    <audio id="audio-player" preload="auto"></audio>
+    <!-- Hidden Audio Element (with crossorigin added for EQ bypass) -->
+    <audio id="audio-player" preload="auto" crossorigin="anonymous"></audio>
 
         <!-- Top Status Bar -->
     <div class="top-bar flex justify-between items-center text-sm text-gray">
@@ -244,6 +251,10 @@
             <button id="btn-copy-session" class="text-gray btn-refresh" title="Copy Session Link" style="display: none;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 <span id="room-id">ROOM</span>
+            </button>
+            <button id="btn-toggle-eq" class="text-gray btn-refresh" title="Toggle Equaliser">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22v-7"></path><path d="M4 11V2"></path><path d="M12 22v-1"></path><path d="M12 17V2"></path><path d="M20 22v-3"></path><path d="M20 15V2"></path><path d="M1 11h6"></path><path d="M9 17h6"></path><path d="M17 15h6"></path></svg>
+                EQ
             </button>
             <button id="btn-force-sync" class="btn-refresh" style="color: #fff; background: rgba(217, 70, 239, 0.4); border-color: #d946ef; box-shadow: 0 0 10px rgba(217, 70, 239, 0.3);" title="Force Sync All Players">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
@@ -378,13 +389,44 @@
         </div>
     </div>
 
+    <!-- MODAL 3: EQUALISER -->
+    <div id="modal-eq" class="glass-modal" style="top: 80px; left: 440px; width: 280px; display: none; z-index: 9;">
+        <div class="drag-handle flex justify-between items-center">
+            <div class="flex items-center gap-2 text-gray">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" opacity="0.5"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+                <span class="font-semibold text-sm tracking-wide">EQUALISER</span>
+            </div>
+            <button id="btn-reset-eq" class="text-gray hover:text-fuchsia transition-colors" title="Reset EQ">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+        </div>
+        <div style="padding: 24px; display: flex; justify-content: space-around; align-items: center; height: 200px; background: rgba(10, 5, 20, 0.4); border-radius: 0 0 16px 16px;">
+            
+            <div class="eq-slider-container">
+                <span class="eq-value" id="val-bass">0dB</span>
+                <input type="range" class="eq-slider" id="eq-bass" min="-20" max="20" value="0" step="1">
+                <span class="eq-label">BASS</span>
+            </div>
+
+            <div class="eq-slider-container">
+                <span class="eq-value" id="val-mid">0dB</span>
+                <input type="range" class="eq-slider" id="eq-mid" min="-20" max="20" value="0" step="1">
+                <span class="eq-label">MID</span>
+            </div>
+
+            <div class="eq-slider-container">
+                <span class="eq-value" id="val-treb">0dB</span>
+                <input type="range" class="eq-slider" id="eq-treb" min="-20" max="20" value="0" step="1">
+                <span class="eq-label">TREB</span>
+            </div>
+
+        </div>
+    </div>
+
     <!-- Main Logic -->
     <script type="module">
         import { DiscordSDK } from 'https://esm.sh/@discord/embedded-app-sdk';
         
-        // --- FIREBASE SDK COMPLETELY REMOVED ---
-        // We are using pure REST HTTP to bypass the Discord Sandbox Proxy completely!
-
         // --- DOM Elements ---
         const audio = document.getElementById('audio-player');
         const playBtn = document.getElementById('btn-play');
@@ -434,7 +476,9 @@
         // --- Glass Window Dragging Logic ---
         function makeDraggable(modalId) {
             const modal = document.getElementById(modalId);
+            if (!modal) return;
             const handle = modal.querySelector('.drag-handle');
+            if (!handle) return;
             let isDragging = false;
             let startX, startY, initialX, initialY;
 
@@ -471,6 +515,7 @@
 
         makeDraggable('modal-player');
         makeDraggable('modal-queue');
+        makeDraggable('modal-eq');
         
         // Ensure the browser tab running this script has a unique user ID
         function generateSafeUUID() {
@@ -773,6 +818,48 @@
         }
 
         // --- Unlock Audio Engine Overlay ---
+        let audioContext;
+        let sourceNode;
+        let bassFilter;
+        let midFilter;
+        let trebleFilter;
+
+        function initAudioEQ() {
+            if (audioContext) return; // Only init once
+            
+            // Initialize Web Audio API Context
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return; // Safeguard if browser blocks it completely
+
+            audioContext = new AudioContext();
+            
+            // Create Media Element Source from our hidden <audio> tag
+            sourceNode = audioContext.createMediaElementSource(audio);
+
+            // Create 3-Band Biquad Filters
+            bassFilter = audioContext.createBiquadFilter();
+            bassFilter.type = "lowshelf";
+            bassFilter.frequency.value = 250; 
+            bassFilter.gain.value = 0;
+
+            midFilter = audioContext.createBiquadFilter();
+            midFilter.type = "peaking";
+            midFilter.frequency.value = 1000; 
+            midFilter.Q.value = 1; 
+            midFilter.gain.value = 0;
+
+            trebleFilter = audioContext.createBiquadFilter();
+            trebleFilter.type = "highshelf";
+            trebleFilter.frequency.value = 4000; 
+            trebleFilter.gain.value = 0;
+
+            // Connect the chain: Audio Tag -> Bass -> Mid -> Treble -> Speakers
+            sourceNode.connect(bassFilter);
+            bassFilter.connect(midFilter);
+            midFilter.connect(trebleFilter);
+            trebleFilter.connect(audioContext.destination);
+        }
+
         document.getElementById('interaction-overlay').addEventListener('click', function() {
             this.style.opacity = '0';
             setTimeout(() => this.style.display = 'none', 500);
@@ -785,16 +872,36 @@
                 audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
             }
 
-            audio.play().then(() => {
-                if (!isPlaying) {
-                    audio.pause();
-                } else if (lastSyncedData && !wasEmpty) {
-                    const expectedPlaybackTime = (lastSyncedData.playbackTime || 0) + ((Date.now() - lastSyncedData.timestamp) / 1000);
-                    if (expectedPlaybackTime < audio.duration || isNaN(audio.duration)) {
-                        audio.currentTime = expectedPlaybackTime;
-                    }
+            // CRITICAL FIX: We must capture the user gesture by calling play() IMMEDIATELY.
+            // If we run the EQ setup first, the gesture token expires and audio is blocked!
+            let playPromise = audio.play();
+
+            // Safely initialize the EQ. Wrapped in a try/catch so a strict sandbox CORS error
+            // won't break your entire tavern music player.
+            try {
+                initAudioEQ();
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
                 }
-            }).catch(e => console.log("Audio unlocked:", e));
+            } catch (err) {
+                console.warn("EQ Disabled: Sandbox blocked Web Audio API", err);
+            }
+
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    if (!isPlaying) {
+                        audio.pause();
+                    } else if (lastSyncedData && !wasEmpty) {
+                        const expectedPlaybackTime = (lastSyncedData.playbackTime || 0) + ((Date.now() - lastSyncedData.timestamp) / 1000);
+                        if (expectedPlaybackTime < audio.duration || isNaN(audio.duration)) {
+                            audio.currentTime = expectedPlaybackTime;
+                        }
+                    }
+                }).catch(e => {
+                    console.log("Audio unlocked error:", e);
+                    if (isPlaying && !wasEmpty) audio.play(); // Fallback trigger
+                });
+            }
         });
 
         // =======================================================================
@@ -1195,6 +1302,56 @@
         const tabQueueBtn = document.getElementById('tab-queue');
         const contentLibrary = document.getElementById('content-library');
         const contentQueue = document.getElementById('content-queue');
+
+        // --- EQ Logic ---
+        const btnToggleEq = document.getElementById('btn-toggle-eq');
+        const modalEq = document.getElementById('modal-eq');
+        const btnResetEq = document.getElementById('btn-reset-eq');
+        
+        const sliderBass = document.getElementById('eq-bass');
+        const sliderMid = document.getElementById('eq-mid');
+        const sliderTreb = document.getElementById('eq-treb');
+        
+        const valBass = document.getElementById('val-bass');
+        const valMid = document.getElementById('val-mid');
+        const valTreb = document.getElementById('val-treb');
+
+        btnToggleEq.addEventListener('click', () => {
+            if (modalEq.style.display === 'none') {
+                modalEq.style.display = 'flex';
+                btnToggleEq.style.color = '#d946ef';
+            } else {
+                modalEq.style.display = 'none';
+                btnToggleEq.style.color = '';
+            }
+        });
+
+        function updateFilter(slider, filterNode, valDisplay) {
+            const val = parseFloat(slider.value);
+            valDisplay.textContent = val > 0 ? `+${val}dB` : `${val}dB`;
+            if (filterNode) {
+                filterNode.gain.value = val;
+            }
+        }
+
+        sliderBass.addEventListener('input', () => updateFilter(sliderBass, bassFilter, valBass));
+        sliderMid.addEventListener('input', () => updateFilter(sliderMid, midFilter, valMid));
+        sliderTreb.addEventListener('input', () => updateFilter(sliderTreb, trebleFilter, valTreb));
+
+        btnResetEq.addEventListener('click', () => {
+            sliderBass.value = 0;
+            sliderMid.value = 0;
+            sliderTreb.value = 0;
+            updateFilter(sliderBass, bassFilter, valBass);
+            updateFilter(sliderMid, midFilter, valMid);
+            updateFilter(sliderTreb, trebleFilter, valTreb);
+            
+            btnResetEq.style.transform = 'rotate(-180deg)';
+            setTimeout(() => {
+                btnResetEq.style.transform = 'rotate(0deg)';
+                btnResetEq.style.transition = 'transform 0.3s ease';
+            }, 50);
+        });
 
         tabLibraryBtn.addEventListener('click', () => {
             tabLibraryBtn.classList.add('active');
