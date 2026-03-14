@@ -1176,6 +1176,7 @@
             const percent = (audio.currentTime / audio.duration) * 100;
             progressBar.style.width = `${percent}%`;
             timeCurrent.textContent = formatTime(audio.currentTime);
+            timeTotal.textContent = formatTime(audio.duration);
         }
 
         function formatTime(seconds) {
@@ -1359,6 +1360,11 @@
         }
 
         // --- Audio & Media Control Listeners ---
+        audio.addEventListener('loadedmetadata', () => {
+            if (!isNaN(audio.duration)) {
+                timeTotal.textContent = formatTime(audio.duration);
+            }
+        });
         audio.addEventListener('timeupdate', updateProgress);
         audio.addEventListener('ended', () => playNext(true));
 
