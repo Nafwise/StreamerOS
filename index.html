@@ -250,7 +250,7 @@
         .track-info-container { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         
         .screen-master-section {
-            width: 320px; display: flex; flex-direction: column; gap: 6px; position: relative; height: 100%;
+            width: 350px; display: flex; flex-direction: column; gap: 6px; position: relative; height: 100%;
         }
 
         .routing-container {
@@ -278,7 +278,6 @@
         .visualizer-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
         .broadcast-toggle {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             background: rgba(31, 41, 55, 0.9); border: 2px solid #4b5563; border-radius: 8px;
             padding: 8px 12px; cursor: pointer; transition: all 0.3s;
@@ -286,6 +285,14 @@
         .broadcast-toggle.active { background: rgba(239, 68, 68, 0.3); border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
         .broadcast-label { font-size: 9px; font-weight: bold; color: #9ca3af; letter-spacing: 1px; margin-bottom: 2px; }
         .broadcast-toggle.active .broadcast-label { color: #ef4444; }
+
+        .broadcast-toggle-remote {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(31, 41, 55, 0.9); border: 2px solid #4b5563; border-radius: 8px;
+            padding: 8px 12px; cursor: pointer; transition: all 0.3s;
+        }
+        .broadcast-toggle-remote.active { background: rgba(139, 92, 246, 0.3); border-color: #8b5cf6; box-shadow: 0 0 15px rgba(139, 92, 246, 0.5); }
+        .broadcast-toggle-remote.active .broadcast-label { color: #c4b5fd; }
 
         /* Decks */
         .dj-deck { display: flex; flex-direction: column; position: relative; }
@@ -417,7 +424,6 @@
             .dj-screen { flex-direction: column; align-items: stretch; }
             .screen-master-section { width: 100%; }
             .tempo-fader-container { position: relative; right: 0; top: 0; height: 100px; }
-            .broadcast-toggle { position: static; transform: none; margin: 10px 0; }
         }
 
     </style>
@@ -444,9 +450,9 @@
         <div class="flex items-center gap-2">
             <!-- Discord SVG Icon -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
-            <span class="font-semibold text-white">Animus Tavern Player v4.0 (Bardcore)</span>
+            <span class="font-semibold text-white">Animus Tavern Player v4.1 (Bardcore)</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
-            <span id="instance-status" style="color: #9ca3af;" class="text-xs font-mono">Room: ---</span>
+            <span id="instance-status" style="color: #9ca3af; cursor: pointer; text-decoration: underline;" class="text-xs font-mono hover:text-fuchsia transition-colors" title="Click to copy Room Tunnel Link">Room: ---</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
             <span id="cloud-status" style="color: #fbbf24;" class="text-xs font-mono">Cloud: Connecting...</span>
         </div>
@@ -622,12 +628,24 @@
                                 <option value="default">Default Speakers</option>
                             </select>
                         </div>
+                        <div id="device-warning" style="font-size: 8px; color: #ef4444; display: none; text-align: center; margin-top: 2px;">
+                            Discord blocks device selection. Open Room URL in Browser to host audio.
+                        </div>
                     </div>
                     <div class="visualizer-wrapper">
                         <canvas id="master-visualizer" class="visualizer-canvas"></canvas>
-                        <div class="broadcast-toggle" id="btn-broadcast-dj">
-                            <span class="broadcast-label" id="broadcast-label-text">BROADCAST TO TAVERN: OFF</span>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="broadcast-icon"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; display: flex; gap: 8px; width: 100%; justify-content: center;">
+                            <div class="broadcast-toggle" id="btn-broadcast-dj" style="padding: 6px 10px;">
+                                <span class="broadcast-label" id="broadcast-label-text">BROADCAST TO TAVERN: OFF</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="broadcast-icon"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            
+                            <!-- Tablet Silent Remote Toggle -->
+                            <div class="broadcast-toggle-remote" id="btn-remote-mode" title="Mute local audio so you can use this device as a remote controller for the PC host.">
+                                <span class="broadcast-label" style="color: #c4b5fd;">SILENT REMOTE</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -829,6 +847,7 @@
 
         // --- DJ Engine State ---
         let isDjBroadcasting = false; 
+        let isSilentRemote = false; 
         let activeCloudDjState = null;
         let pushThrottleTimeout;
 
@@ -1365,6 +1384,10 @@
                 masterSelect.innerHTML = '<option value="default">Default Speakers</option><option value="communications">Communications Device</option>';
                 cueSelect.innerHTML = '<option value="communications">Communications Device</option><option value="default">Default Speakers</option>';
                 
+                if (audioOutputs.length <= 1) {
+                    document.getElementById('device-warning').style.display = 'block';
+                }
+
                 audioOutputs.forEach(device => {
                     if (device.deviceId === 'default' || device.deviceId === 'communications' || !device.deviceId) return;
                     const label = device.label || `Audio Device (${device.deviceId.substring(0, 5)})`;
@@ -1428,8 +1451,19 @@
         const firebaseBaseUrl = window.location.hostname.includes('discordsays.com') ? '/firestore' : 'https://firestore.googleapis.com';
         const docUrl = `${firebaseBaseUrl}/v1/${docPath}`;
 
-        document.getElementById('instance-status').textContent = `Room: ${instanceId.startsWith('room_') ? 'Global Test' : instanceId.substring(0, 8)}`;
+        const roomDisplayStr = instanceId.startsWith('room_') ? 'Global Test' : instanceId.substring(0, 8);
+        document.getElementById('instance-status').textContent = `Room: ${roomDisplayStr}`;
         
+        // --- Room Tunnel Link Copy ---
+        document.getElementById('instance-status').addEventListener('click', () => {
+            const fullUrl = window.location.origin + window.location.pathname + '?instance_id=' + instanceId;
+            navigator.clipboard.writeText(fullUrl).then(() => {
+                const el = document.getElementById('instance-status');
+                el.textContent = "COPIED!";
+                setTimeout(() => el.textContent = `Room: ${roomDisplayStr}`, 1500);
+            }).catch(err => console.error('Failed to copy: ', err));
+        });
+
         let isPolling = false, isPushing = false, lastProcessedTimestamp = 0, currentLoadedUrl = "";
 
         async function pollCloud() {
@@ -1471,12 +1505,18 @@
                 timestamp: Date.now(), syncId: Date.now(),
                 playbackTime: forceClear ? 0 : audioMain.currentTime,
                 sender: userId,
-                // Bardcore DJ Overrides
+                // Bardcore DJ Overrides (Fully Synchronized)
                 isDjMode: isDjBroadcasting,
                 djState: isDjBroadcasting ? {
                     crossfader: crossfaderInput.value,
-                    a: { url: decks.a.url||'', isPlaying: decks.a.isPlaying, playbackTime: decks.a.audio.currentTime, tempo: decks.a.ui.tempo.value },
-                    b: { url: decks.b.url||'', isPlaying: decks.b.isPlaying, playbackTime: decks.b.audio.currentTime, tempo: decks.b.ui.tempo.value }
+                    a: { 
+                        url: decks.a.url||'', isPlaying: decks.a.isPlaying, playbackTime: decks.a.audio.currentTime, tempo: decks.a.ui.tempo.value,
+                        vol: decks.a.ui.vol.value, eqH: decks.a.ui.eqH.value, eqM: decks.a.ui.eqM.value, eqL: decks.a.ui.eqL.value
+                    },
+                    b: { 
+                        url: decks.b.url||'', isPlaying: decks.b.isPlaying, playbackTime: decks.b.audio.currentTime, tempo: decks.b.ui.tempo.value,
+                        vol: decks.b.ui.vol.value, eqH: decks.b.ui.eqH.value, eqM: decks.b.ui.eqM.value, eqL: decks.b.ui.eqL.value
+                    }
                 } : null
             };
 
@@ -1542,6 +1582,7 @@
         const modalDj = document.getElementById('modal-dj');
         const btnCloseDj = document.getElementById('btn-close-dj');
         const btnBroadcastDj = document.getElementById('btn-broadcast-dj');
+        const btnRemoteDj = document.getElementById('btn-remote-mode');
 
         btnToggleDj.addEventListener('click', () => { modalDj.style.display = 'flex'; });
         btnCloseDj.addEventListener('click', () => { modalDj.style.display = 'none'; });
@@ -1550,7 +1591,7 @@
         function queueDjStateSync() {
             if (!isDjBroadcasting) return; 
             clearTimeout(pushThrottleTimeout);
-            pushThrottleTimeout = setTimeout(() => pushStateToCloud(), 500);
+            pushThrottleTimeout = setTimeout(() => pushStateToCloud(), 300);
         }
 
         btnBroadcastDj.addEventListener('click', () => {
@@ -1563,6 +1604,14 @@
             } else { pushStateToCloud(); }
         });
 
+        // Silent Remote Mode (Tablet logic)
+        btnRemoteDj.addEventListener('click', function() {
+            isSilentRemote = !isSilentRemote;
+            this.classList.toggle('active', isSilentRemote);
+            if (masterBus) masterBus.gain.value = isSilentRemote ? 0 : 1.0;
+            if (headphoneBus) headphoneBus.gain.value = isSilentRemote ? 0 : 1.0;
+        });
+
         function overrideTavernForDj(djState) {
             trackTitleUI.textContent = "🔴 LIVE DJ MIX"; trackArtistUI.textContent = "Broadcasting from Decks";
             albumArt.classList.add('dj-live');
@@ -1572,11 +1621,8 @@
             
             crossfaderInput.value = djState.crossfader; updateCrossfaderLocal();
 
-            const isLocalDJ = (isDjBroadcasting);
-            document.querySelectorAll('.dj-console input[type="range"], .dj-console button').forEach(el => {
-                if(el.id !== "btn-broadcast-dj" && el.id !== "btn-close-dj" && !el.classList.contains('headphone-cue-btn')) el.disabled = !isLocalDJ;
-            });
-
+            // We do not disable knobs if they are mirrored - the user may want to tweak from PC too.
+            // Just apply the state silently.
             syncRemoteDeck(DECK_A, djState.a); syncRemoteDeck(DECK_B, djState.b);
         }
 
@@ -1602,7 +1648,18 @@
             if (deck.url !== remoteState.url) {
                 deck.url = remoteState.url; deck.audio.src = remoteState.url;
             }
+            
+            // Sync Knobs & EQs
             deck.ui.tempo.value = remoteState.tempo; deck.audio.playbackRate = 1 + parseFloat(remoteState.tempo);
+            deck.ui.vol.value = remoteState.vol; deck.nodes.volGain.gain.value = remoteState.vol;
+            deck.ui.eqH.value = remoteState.eqH; deck.nodes.high.gain.value = remoteState.eqH;
+            deck.ui.eqM.value = remoteState.eqM; deck.nodes.mid.gain.value = remoteState.eqM;
+            deck.ui.eqL.value = remoteState.eqL; deck.nodes.low.gain.value = remoteState.eqL;
+            
+            // Force redraw of LED rings
+            deck.ui.eqH.dispatchEvent(new Event('input'));
+            deck.ui.eqM.dispatchEvent(new Event('input'));
+            deck.ui.eqL.dispatchEvent(new Event('input'));
             
             if (Math.abs(deck.audio.currentTime - remoteState.playbackTime) > 1.5) { deck.audio.currentTime = remoteState.playbackTime; }
 
@@ -1659,13 +1716,26 @@
             }
         }
 
-        function loadFromDjCrate(genre, index, deckId) {
+        async function loadFromDjCrate(genre, index, deckId) {
             const track = musicRepository[genre].tracks[index];
             loadDjTrack(deckId, track.url, track.title, track.artist);
             queueDjStateSync();
+
+            // Calculate BPM from URL
+            decks[deckId].ui.bpmDisplay.textContent = "CALC...";
+            try {
+                const response = await fetch(track.url);
+                const arrayBuffer = await response.arrayBuffer();
+                const detectedBpm = await calculateBPM(arrayBuffer);
+                decks[deckId].baseBpm = detectedBpm;
+                decks[deckId].ui.tempo.dispatchEvent(new Event('input')); 
+            } catch(e) {
+                decks[deckId].baseBpm = 0;
+                decks[deckId].ui.bpmDisplay.textContent = "--- BPM";
+            }
         }
 
-        // --- BPM Calculator for Local Files ---
+        // --- BPM Calculator ---
         async function calculateBPM(arrayBuffer) {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
