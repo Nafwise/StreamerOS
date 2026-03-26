@@ -224,7 +224,7 @@
 
 
         /* =========================================================
-           DJ CONSOLE CSS (MERGED FROM DECKS.HTML)
+           DJ CONSOLE CSS 
            ========================================================= */
         .dj-console {
             position: relative; z-index: 10; display: grid;
@@ -1154,7 +1154,7 @@
                     { title: "The Lich's Toll", artist: "Nafwise", url: "music/DnB/The Lich's Toll.mp3" },
                     { title: "The Titan’s Lament", artist: "Nafwise", url: "music/DnB/The Titan’s Lament.mp3" },
                     { title: "The Titan’s Thrummin", artist: "Nafwise", url: "music/DnB/The Titan’s Thrummin.mp3" },
-                    { title: "Thrumgle", url: "music/DnB/Thrumgle.mp3" },
+                    { title: "Thrumgle", artist: "Nafwise", url: "music/DnB/Thrumgle.mp3" },
                     { title: "Twilight Mist", artist: "Nafwise", url: "music/DnB/Twilight Mist.mp3" },
                     { title: "Velvet Frequency", artist: "Nafwise", url: "music/DnB/Velvet Frequency.mp3" },
                     { title: "Vocal Thummin", artist: "Nafwise", url: "music/DnB/Vocal Thummin.mp3" },
@@ -1616,7 +1616,6 @@
             const list = document.getElementById('dj-crate-list');
             list.innerHTML = '';
             
-            // Only load specific genres into the DJ Crate to lighten the load
             const allowedDjGenres = ["DnB", "TnB Bardcore", "Meet The Creator"];
             
             for (const [genreName, genreData] of Object.entries(musicRepository)) {
@@ -1629,21 +1628,38 @@
                 genreData.tracks.forEach((track, index) => {
                     const item = document.createElement('div');
                     item.className = 'crate-item';
-                    item.innerHTML = `
-                        <div class="truncate" style="flex-grow: 1; padding-right: 10px;">
-                            <div class="text-sm font-bold text-white truncate">${track.title}</div>
-                        </div>
-                        <div class="load-btns">
-                            <button class="btn-load btn-load-a" onclick="window.loadFromDjCrate('${genreName}', ${index}, 'a')">LOAD A</button>
-                            <button class="btn-load btn-load-b" onclick="window.loadFromDjCrate('${genreName}', ${index}, 'b')">LOAD B</button>
-                        </div>
-                    `;
+                    
+                    const titleContainer = document.createElement('div');
+                    titleContainer.className = 'truncate';
+                    titleContainer.style.flexGrow = '1';
+                    titleContainer.style.paddingRight = '10px';
+                    titleContainer.innerHTML = `<div class="text-sm font-bold text-white truncate">${track.title}</div>`;
+                    
+                    const btnContainer = document.createElement('div');
+                    btnContainer.className = 'load-btns';
+                    
+                    const btnA = document.createElement('button');
+                    btnA.className = 'btn-load btn-load-a';
+                    btnA.textContent = 'LOAD A';
+                    btnA.addEventListener('click', () => loadFromDjCrate(genreName, index, 'a'));
+                    
+                    const btnB = document.createElement('button');
+                    btnB.className = 'btn-load btn-load-b';
+                    btnB.textContent = 'LOAD B';
+                    btnB.addEventListener('click', () => loadFromDjCrate(genreName, index, 'b'));
+                    
+                    btnContainer.appendChild(btnA);
+                    btnContainer.appendChild(btnB);
+                    
+                    item.appendChild(titleContainer);
+                    item.appendChild(btnContainer);
+                    
                     list.appendChild(item);
                 });
             }
         }
 
-        window.loadFromDjCrate = function(genre, index, deckId) {
+        function loadFromDjCrate(genre, index, deckId) {
             const track = musicRepository[genre].tracks[index];
             loadDjTrack(deckId, track.url, track.title, track.artist);
             queueDjStateSync();
@@ -1680,37 +1696,45 @@
                     const item = document.createElement('div');
                     item.className = 'crate-item';
                     
-                    // Setup reader just for getting the ArrayBuffer
-                    const reader = new FileReader();
+                    const titleContainer = document.createElement('div');
+                    titleContainer.className = 'truncate';
+                    titleContainer.style.flexGrow = '1';
+                    titleContainer.style.paddingRight = '10px';
+                    titleContainer.innerHTML = `<div class="text-sm font-bold text-white truncate">${title} (Local)</div>`;
                     
-                    item.innerHTML = `
-                        <div class="truncate" style="flex-grow: 1; padding-right: 10px;">
-                            <div class="text-sm font-bold text-white truncate">${title} (Local)</div>
-                        </div>
-                        <div class="load-btns">
-                            <button class="btn-load btn-load-a local-dj-load" data-deck="a" data-url="${url}" data-title="${title.replace(/'/g, "\\'")}">LOAD A</button>
-                            <button class="btn-load btn-load-b local-dj-load" data-deck="b" data-url="${url}" data-title="${title.replace(/'/g, "\\'")}">LOAD B</button>
-                        </div>
-                    `;
-                    list.insertBefore(item, list.firstChild);
+                    const btnContainer = document.createElement('div');
+                    btnContainer.className = 'load-btns';
+                    
+                    const btnA = document.createElement('button');
+                    btnA.className = 'btn-load btn-load-a';
+                    btnA.textContent = 'LOAD A';
+                    
+                    const btnB = document.createElement('button');
+                    btnB.className = 'btn-load btn-load-b';
+                    btnB.textContent = 'LOAD B';
 
-                    // Attach click logic that uses the specific file ref
-                    const btns = item.querySelectorAll('.local-dj-load');
-                    btns.forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const dId = this.getAttribute('data-deck');
-                            decks[dId].ui.bpmDisplay.textContent = "CALC...";
-                            const innerReader = new FileReader();
-                            innerReader.onload = async function(ev) {
-                                const detectedBpm = await calculateBPM(ev.target.result);
-                                decks[dId].baseBpm = detectedBpm;
-                                decks[dId].ui.tempo.dispatchEvent(new Event('input')); // Refresh text UI
-                            };
-                            innerReader.readAsArrayBuffer(file);
-                            
-                            loadDjTrack(dId, this.getAttribute('data-url'), this.getAttribute('data-title'), "Suno Pro (Local)");
-                        });
-                    });
+                    const clickHandler = function(dId) {
+                        decks[dId].ui.bpmDisplay.textContent = "CALC...";
+                        const innerReader = new FileReader();
+                        innerReader.onload = async function(ev) {
+                            const detectedBpm = await calculateBPM(ev.target.result);
+                            decks[dId].baseBpm = detectedBpm;
+                            decks[dId].ui.tempo.dispatchEvent(new Event('input')); 
+                        };
+                        innerReader.readAsArrayBuffer(file);
+                        loadDjTrack(dId, url, title, "Suno Pro (Local)");
+                    };
+
+                    btnA.addEventListener('click', () => clickHandler('a'));
+                    btnB.addEventListener('click', () => clickHandler('b'));
+                    
+                    btnContainer.appendChild(btnA);
+                    btnContainer.appendChild(btnB);
+                    
+                    item.appendChild(titleContainer);
+                    item.appendChild(btnContainer);
+                    
+                    list.insertBefore(item, list.firstChild);
                 }
             });
         });
@@ -1723,8 +1747,6 @@
             deck.ui.tempo.value = 0; deck.audio.playbackRate = 1;
             updateDjTransportUI(id);
             
-            // Hardcode fallback BPM logic since Suno tracks are usually fixed but user states they use Suno Pro lengths.
-            // If it's a repository track, we just show "---" or "120" if baseBpm isn't calc'd.
             if(artist !== "Suno Pro (Local)") { deck.baseBpm = 0; deck.ui.bpmDisplay.textContent = "--- BPM"; }
         }
 
@@ -1823,7 +1845,6 @@
             const input = wrapper.querySelector('.eq-hidden-input');
             const tickCont = wrapper.querySelector('.eq-tick-container');
             const meter = wrapper.querySelector('.eq-ring-meter');
-            // Check if this knob belongs to Deck B (Cyan) or Deck A (Fuchsia)
             const isDeckB = wrapper.closest('.deck-b-theme') !== null;
             const color = isDeckB ? '#22d3ee' : '#d946ef';
             const emptyColor = 'rgba(55,65,81,0.5)';
@@ -1832,19 +1853,14 @@
                 const val = parseFloat(input.value);
                 const min = parseFloat(input.min);
                 const max = parseFloat(input.max);
-                // Calculate percentage (0.0 to 1.0) based on min/max constraints
                 const pct = (val - min) / (max - min); 
                 
-                // Rotate the inner physical tick (-135deg to +135deg)
                 const deg = (pct * 270) - 135;
                 tickCont.style.transform = `rotate(${deg}deg)`;
                 
-                // Fill the LED Ring (270 degree span starting from bottom-left at 225deg)
                 const fillDeg = pct * 270;
                 meter.style.background = `conic-gradient(from 225deg, ${color} 0deg, ${color} ${fillDeg}deg, ${emptyColor} ${fillDeg}deg, ${emptyColor} 270deg, transparent 270deg)`;
             });
-            
-            // Force initialization to draw the ring accurately at startup
             input.dispatchEvent(new Event('input'));
         });
 
@@ -1914,11 +1930,11 @@
             for (const [genreName, genreData] of Object.entries(musicRepository)) {
                 const btn = document.createElement('button'); btn.className = 'genre-btn';
                 btn.innerHTML = `<div class="genre-title"><span style="color: #9ca3af;">${genreData.icon}</span>${genreName}</div><div class="genre-count">${genreData.tracks.length}</div>`;
-                btn.onclick = () => {
+                btn.addEventListener('click', () => {
                     tracks = [...tracks, ...genreData.tracks.map(t => ({...t}))];
                     if (tracks.length === genreData.tracks.length) loadMainTrack(0, true); else renderPlaylist();
                     pushStateToCloud(); tabQueueBtn.click();
-                };
+                });
                 container.appendChild(btn);
             }
         }
@@ -1929,6 +1945,15 @@
             if (tracks.length === allTracks.length) loadMainTrack(0, true); else renderPlaylist();
             pushStateToCloud(); tabQueueBtn.click();
         });
+
+        window.removeTrack = function(index) {
+            tracks.splice(index, 1);
+            if (index === currentTrackIndex) {
+                if (tracks.length === 0) { currentTrackIndex = -1; audioMain.pause(); isPlaying = false; updatePlayIcon(); trackTitleUI.textContent = "No Track Loaded"; trackArtistUI.textContent = "Awaiting Input..."; } 
+                else { if (currentTrackIndex >= tracks.length) currentTrackIndex = 0; loadMainTrack(currentTrackIndex, isPlaying); }
+            } else if (index < currentTrackIndex) currentTrackIndex--;
+            renderPlaylist(); pushStateToCloud();
+        };
 
         function renderPlaylist() {
             document.getElementById('track-count').textContent = `${tracks.length} TRKS`;
@@ -1942,25 +1967,28 @@
                 const item = document.createElement('div');
                 item.className = `track-item ${index === currentTrackIndex ? 'active' : ''}`;
                 let vis = index === currentTrackIndex && isPlaying ? `<div class="active-bars"><div></div><div></div><div></div></div>` : iconMusic;
+                
                 item.innerHTML = `
                     <div class="track-icon ${index === currentTrackIndex ? 'text-fuchsia' : 'text-gray'}">${vis}</div>
                     <div class="flex-grow truncate"><div class="text-sm font-semibold truncate ${index === currentTrackIndex ? 'text-fuchsia' : 'text-white'}">${track.title}</div><div class="text-xs text-gray truncate">${track.artist}</div></div>
-                    <button class="text-gray hover:text-red px-2" style="transition: all 0.2s;" title="Remove Track" onclick="event.stopPropagation(); window.removeTrack(${index})">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    </button>
                 `;
-                item.onclick = () => loadMainTrack(index, true); pl.appendChild(item);
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'text-gray hover:text-red px-2';
+                removeBtn.style.transition = 'all 0.2s';
+                removeBtn.title = 'Remove Track';
+                removeBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+                
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.removeTrack(index);
+                });
+                
+                item.appendChild(removeBtn);
+                item.addEventListener('click', () => loadMainTrack(index, true));
+                pl.appendChild(item);
             });
         }
-
-        window.removeTrack = function(index) {
-            tracks.splice(index, 1);
-            if (index === currentTrackIndex) {
-                if (tracks.length === 0) { currentTrackIndex = -1; audioMain.pause(); isPlaying = false; updatePlayIcon(); trackTitleUI.textContent = "No Track Loaded"; trackArtistUI.textContent = "Awaiting Input..."; } 
-                else { if (currentTrackIndex >= tracks.length) currentTrackIndex = 0; loadMainTrack(currentTrackIndex, isPlaying); }
-            } else if (index < currentTrackIndex) currentTrackIndex--;
-            renderPlaylist(); pushStateToCloud();
-        };
 
         document.getElementById('btn-clear-queue').addEventListener('click', () => {
             tracks = []; currentTrackIndex = -1; audioMain.pause(); audioMain.src = ''; currentLoadedUrl = ''; isPlaying = false; updatePlayIcon();
