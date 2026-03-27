@@ -450,9 +450,9 @@
         <div class="flex items-center gap-2">
             <!-- Discord SVG Icon -->
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#a855f7"><path d="M20.3 5.2C18.8 4.5 17.2 4 15.5 3.7l-.4.8c-1.8-.3-3.6-.3-5.3 0l-.4-.8c-1.7.3-3.3.8-4.8 1.5-3 4.5-3.8 8.9-3.4 13.2 1.9 1.4 3.9 2.3 5.9 2.8l1.3-1.6c-1.1-.3-2.2-.8-3.1-1.4 1.4 1 3 1.7 4.7 2.1 1.6.4 3.3.4 4.9 0 1.7-.4 3.3-1.1 4.7-2.1-1 .6-2.1 1.1-3.1 1.4l1.3 1.6c2-.5 4-1.4 5.9-2.8.5-4.7-.6-9.1-3.6-13.2zM8.5 15.3c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-1 2.3-2.1 2.3zm7 0c-1.2 0-2.1-1-2.1-2.3 0-1.2.9-2.3 2.1-2.3s2.1 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
-            <span class="font-semibold text-white">Animus Tavern Player v4.1 (Bardcore)</span>
+            <span class="font-semibold text-white">Animus Tavern Player v4.2 (Bardcore)</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
-            <span id="instance-status" style="color: #9ca3af; cursor: pointer; text-decoration: underline;" class="text-xs font-mono hover:text-fuchsia transition-colors" title="Click to copy Room Tunnel Link">Room: ---</span>
+            <span id="instance-status" style="color: #9ca3af; cursor: pointer; text-decoration: underline;" class="text-xs font-mono hover:text-fuchsia transition-colors" title="Click to Connect Tablet">Room: ---</span>
             <span style="opacity: 0.5; margin: 0 4px;">|</span>
             <span id="cloud-status" style="color: #fbbf24;" class="text-xs font-mono">Cloud: Connecting...</span>
         </div>
@@ -1448,20 +1448,19 @@
         
         const projectId = "akashic-tome-27d3f"; const defaultAppId = 'animus-vtt-system'; const apiKey = "AIzaSyD6Nr96oE7v-Hylodd84nvT8Iq2abrW1Zc"; 
         const docPath = `projects/${projectId}/databases/(default)/documents/artifacts/${defaultAppId}/public/data/vttState/music_${instanceId}`;
-        const firebaseBaseUrl = window.location.hostname.includes('discordsays.com') ? '/firestore' : 'https://firestore.googleapis.com';
-        const docUrl = `${firebaseBaseUrl}/v1/${docPath}`;
+        
+        // Use direct Google API endpoint for robust pushing (avoiding proxy PATCH limits)
+        const docUrl = `https://firestore.googleapis.com/v1/${docPath}`;
 
         const roomDisplayStr = instanceId.startsWith('room_') ? 'Global Test' : instanceId.substring(0, 8);
         document.getElementById('instance-status').textContent = `Room: ${roomDisplayStr}`;
         
-        // --- Room Tunnel Link Copy ---
+        // --- Room Tunnel Link Logic ---
         document.getElementById('instance-status').addEventListener('click', () => {
-            const fullUrl = window.location.origin + window.location.pathname + '?instance_id=' + instanceId;
-            navigator.clipboard.writeText(fullUrl).then(() => {
-                const el = document.getElementById('instance-status');
-                el.textContent = "COPIED!";
-                setTimeout(() => el.textContent = `Room: ${roomDisplayStr}`, 1500);
-            }).catch(err => console.error('Failed to copy: ', err));
+            const requestedId = prompt("TUNNEL MODE:\nTo connect another device, open the Tavern URL there and paste this Room ID:\n\nIf you want to JOIN another room, paste its ID below:", instanceId);
+            if (requestedId && requestedId !== instanceId) {
+                window.location.href = window.location.pathname + '?instance_id=' + requestedId;
+            }
         });
 
         let isPolling = false, isPushing = false, lastProcessedTimestamp = 0, currentLoadedUrl = "";
@@ -1521,11 +1520,14 @@
             };
 
             try {
-                await fetch(`${docUrl}?key=${apiKey}&updateMask.fieldPaths=payload`, {
+                const response = await fetch(`${docUrl}?key=${apiKey}&updateMask.fieldPaths=payload`, {
                     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: docPath, fields: { payload: { stringValue: JSON.stringify(state) } } })
                 });
-            } catch(e) {} finally { isPushing = false; }
+                if (!response.ok) console.error("Cloud push failed:", await response.text());
+            } catch(e) {
+                console.error("Network error pushing to cloud:", e);
+            } finally { isPushing = false; }
         }
 
         // --- Handle Remote Instructions ---
@@ -1610,6 +1612,7 @@
             this.classList.toggle('active', isSilentRemote);
             if (masterBus) masterBus.gain.value = isSilentRemote ? 0 : 1.0;
             if (headphoneBus) headphoneBus.gain.value = isSilentRemote ? 0 : 1.0;
+            audioMain.muted = isSilentRemote;
         });
 
         function overrideTavernForDj(djState) {
@@ -1630,7 +1633,6 @@
             if(albumArt.classList.contains('dj-live')) {
                 albumArt.classList.remove('dj-live');
                 artSvg.innerHTML = `<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle>`;
-                document.querySelectorAll('.dj-console input[type="range"], .dj-console button').forEach(el => el.disabled = false);
                 
                 decks.a.audio.pause(); decks.b.audio.pause();
                 
@@ -1716,26 +1718,17 @@
             }
         }
 
-        async function loadFromDjCrate(genre, index, deckId) {
+        function loadFromDjCrate(genre, index, deckId) {
             const track = musicRepository[genre].tracks[index];
             loadDjTrack(deckId, track.url, track.title, track.artist);
             queueDjStateSync();
 
-            // Calculate BPM from URL
-            decks[deckId].ui.bpmDisplay.textContent = "CALC...";
-            try {
-                const response = await fetch(track.url);
-                const arrayBuffer = await response.arrayBuffer();
-                const detectedBpm = await calculateBPM(arrayBuffer);
-                decks[deckId].baseBpm = detectedBpm;
-                decks[deckId].ui.tempo.dispatchEvent(new Event('input')); 
-            } catch(e) {
-                decks[deckId].baseBpm = 0;
-                decks[deckId].ui.bpmDisplay.textContent = "--- BPM";
-            }
+            // Removed slow network fetch for BPM. Loads instantly!
+            decks[deckId].baseBpm = 0;
+            decks[deckId].ui.bpmDisplay.textContent = "--- BPM"; 
         }
 
-        // --- BPM Calculator ---
+        // --- BPM Calculator for Local Files Only ---
         async function calculateBPM(arrayBuffer) {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2165,6 +2158,135 @@
         // Initialize Library UIs
         renderLibrary(); renderPlaylist(); renderDjCrate();
 
+        // Synapse Engine Visuals
+        const synCanvas = document.getElementById('synapse-canvas');
+        const synCtx = synCanvas.getContext('2d');
+        let synWidth, synHeight;
+        let synNodes = [];
+        let synSignals = [];
+        const maxNodes = 60; 
+        const connectionDistance = 150;
+        const synColors = ['#9333ea', '#d946ef', '#22d3ee', '#a855f7'];
+
+        function initSynapse() {
+            synWidth = synCanvas.width = window.innerWidth;
+            synHeight = synCanvas.height = window.innerHeight;
+            synNodes = [];
+            synSignals = [];
+            for (let i = 0; i < maxNodes; i++) {
+                synNodes.push(new SynNode());
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            let oldWidth = synWidth;
+            let oldHeight = synHeight;
+            
+            synWidth = synCanvas.width = window.innerWidth;
+            synHeight = synCanvas.height = window.innerHeight;
+            
+            if (oldWidth > 0 && oldHeight > 0 && synNodes.length > 0) {
+                let wRatio = synWidth / oldWidth;
+                let hRatio = synHeight / oldHeight;
+                synNodes.forEach(n => {
+                    n.x *= wRatio;
+                    n.y *= hRatio;
+                });
+            }
+        });
+
+        class SynNode {
+            constructor() {
+                this.x = Math.random() * synWidth;
+                this.y = Math.random() * synHeight;
+                this.vx = (Math.random() - 0.5) * 0.4;
+                this.vy = (Math.random() - 0.5) * 0.4;
+                this.radius = Math.random() * 2 + 1;
+                this.color = synColors[Math.floor(Math.random() * synColors.length)];
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                if (this.x <= 0 || this.x >= synWidth) this.vx *= -1;
+                if (this.y <= 0 || this.y >= synHeight) this.vy *= -1;
+                
+                if (this.x < 0) this.x = 0;
+                if (this.x > synWidth) this.x = synWidth;
+                if (this.y < 0) this.y = 0;
+                if (this.y > synHeight) this.y = synHeight;
+            }
+            draw() {
+                synCtx.beginPath();
+                synCtx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                synCtx.fillStyle = this.color;
+                synCtx.fill();
+            }
+        }
+
+        setInterval(() => {
+            if (synNodes.length < 2) return;
+            let n1 = synNodes[Math.floor(Math.random() * synNodes.length)];
+            let n2 = synNodes[Math.floor(Math.random() * synNodes.length)];
+            if (n1 !== n2) {
+                let dx = n1.x - n2.x;
+                let dy = n1.y - n2.y;
+                if (Math.sqrt(dx * dx + dy * dy) < connectionDistance * 1.5 && synSignals.length < 3) {
+                    synSignals.push({ 
+                        x: n1.x, y: n1.y, target: n2, progress: 0, color: n1.color, name: "" 
+                    });
+                }
+            }
+        }, 300);
+
+        function animateSynapse() {
+            synCtx.clearRect(0, 0, synWidth, synHeight);
+
+            synNodes.forEach(node => {
+                node.update();
+                node.draw();
+            });
+
+            synCtx.lineWidth = 1;
+            for (let i = 0; i < synNodes.length; i++) {
+                for (let j = i + 1; j < synNodes.length; j++) {
+                    let dx = synNodes[i].x - synNodes[j].x;
+                    let dy = synNodes[i].y - synNodes[j].y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < connectionDistance) {
+                        synCtx.beginPath();
+                        synCtx.moveTo(synNodes[i].x, synNodes[i].y);
+                        synCtx.lineTo(synNodes[j].x, synNodes[j].y);
+                        let alpha = 1 - (dist / connectionDistance);
+                        synCtx.strokeStyle = `rgba(217, 70, 239, ${alpha * 0.3})`;
+                        synCtx.stroke();
+                    }
+                }
+            }
+
+            for (let i = synSignals.length - 1; i >= 0; i--) {
+                let s = synSignals[i];
+                s.progress += 0.015;
+                if (s.progress >= 1) {
+                    synSignals.splice(i, 1);
+                    continue;
+                }
+                let curX = s.x + (s.target.x - s.x) * s.progress;
+                let curY = s.y + (s.target.y - s.y) * s.progress;
+
+                synCtx.beginPath();
+                synCtx.arc(curX, curY, 2.5, 0, Math.PI * 2);
+                synCtx.fillStyle = '#ffffff';
+                synCtx.shadowBlur = 10;
+                synCtx.shadowColor = s.color;
+                synCtx.fill();
+                synCtx.shadowBlur = 0;
+            }
+            requestAnimationFrame(animateSynapse);
+        }
+
+        initSynapse();
+        animateSynapse();
     </script>
 </body>
 </html>
