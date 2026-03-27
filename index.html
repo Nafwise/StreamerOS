@@ -288,11 +288,8 @@
 
         .broadcast-toggle-remote {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(31, 41, 55, 0.9); border: 2px solid #4b5563; border-radius: 8px;
-            padding: 8px 12px; cursor: pointer; transition: all 0.3s;
+            border-radius: 8px; border: 2px solid; padding: 8px 12px; cursor: pointer; transition: all 0.3s;
         }
-        .broadcast-toggle-remote.active { background: rgba(139, 92, 246, 0.3); border-color: #8b5cf6; box-shadow: 0 0 15px rgba(139, 92, 246, 0.5); }
-        .broadcast-toggle-remote.active .broadcast-label { color: #c4b5fd; }
 
         /* Decks */
         .dj-deck { display: flex; flex-direction: column; position: relative; }
@@ -689,10 +686,10 @@
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="broadcast-icon"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                             </div>
                             
-                            <!-- Tablet Silent Remote Toggle -->
-                            <div class="broadcast-toggle-remote" id="btn-remote-mode" title="Mute local audio so you can use this device as a remote controller for the PC host.">
-                                <span class="broadcast-label" style="color: #c4b5fd;">SILENT REMOTE</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                            <!-- 3-State Local Audio Toggle -->
+                            <div class="broadcast-toggle-remote" id="btn-remote-mode" title="Click to cycle local output: ALL ON -> CUE ONLY -> MUTED" style="border-color: #4ade80; background: rgba(74, 222, 128, 0.2);">
+                                <span class="broadcast-label" id="remote-mode-label" style="color: #4ade80;">AUDIO: ALL ON</span>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="remote-mode-icon" style="color: #4ade80;"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 16.5c1.3-1.8 1.3-4.2 0-6M19 19.5c3.2-4.5 3.2-10.5 0-15"/></svg>
                             </div>
                         </div>
                     </div>
@@ -1289,6 +1286,9 @@
         let dataArray, dataA, dataB;
         let sfxScratchEl, sfxRewindEl;
 
+        // 3-State Audio Router logic
+        let localAudioState = 0; // 0 = ALL ON, 1 = CUE ONLY, 2 = MUTED
+
         function initAudioEngine() {
             if (audioCtx) return;
             const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -1298,6 +1298,10 @@
             // Core Buses
             masterBus = audioCtx.createGain();
             headphoneBus = audioCtx.createGain();
+
+            // Distinct Hardware Volume Nodes (Placed AFTER the visualizers so they always bounce)
+            window.masterLocalVol = audioCtx.createGain();
+            window.headphoneLocalVol = audioCtx.createGain();
 
             // Hardware Destinations
             masterDest = audioCtx.createMediaStreamDestination();
@@ -1311,10 +1315,14 @@
             analyzerA = audioCtx.createAnalyser(); analyzerA.fftSize = 128; dataA = new Uint8Array(analyzerA.frequencyBinCount);
             analyzerB = audioCtx.createAnalyser(); analyzerB.fftSize = 128; dataB = new Uint8Array(analyzerB.frequencyBinCount);
 
-            // Master Bus flows into Analyzer, then out to Speakers
+            // Routing: Master -> Analyzer -> Local Volume -> Speakers
             masterBus.connect(analyzer);
-            masterBus.connect(masterDest);
-            headphoneBus.connect(headphoneDest);
+            masterBus.connect(window.masterLocalVol);
+            window.masterLocalVol.connect(masterDest);
+
+            // Routing: Cue -> Local Volume -> Headphones
+            headphoneBus.connect(window.headphoneLocalVol);
+            window.headphoneLocalVol.connect(headphoneDest);
 
             // SFX Hookup
             sfxScratchEl = document.getElementById('sfx-scratch');
@@ -1333,6 +1341,9 @@
             setupDeckChain(DECK_A);
             setupDeckChain(DECK_B);
             updateCrossfaderLocal();
+
+            // Apply correct initial volume states based on toggle
+            updateLocalAudioState();
 
             if (audioCtx.state === 'suspended') audioCtx.resume();
             
@@ -1724,21 +1735,51 @@
             } else { pushStateToCloud(); }
         });
 
-        // Silent Remote Mode (Tablet logic)
-        btnRemoteDj.addEventListener('click', function() {
-            isSilentRemote = !isSilentRemote;
-            this.classList.toggle('active', isSilentRemote);
-            
-            // Mute API buses
-            if (masterBus) masterBus.gain.value = isSilentRemote ? 0 : 1.0;
-            if (headphoneBus) headphoneBus.gain.value = isSilentRemote ? 0 : 1.0;
-            
-            // Hard-mute HTML elements to guarantee complete silence on the tablet
-            audioMain.muted = isSilentRemote;
-            decks.a.audio.muted = isSilentRemote;
-            decks.b.audio.muted = isSilentRemote;
-            if (sfxScratchEl) sfxScratchEl.muted = isSilentRemote;
-            if (sfxRewindEl) sfxRewindEl.muted = isSilentRemote;
+        // 3-State Local Audio Mode (PC Browser / Tablet logic)
+        function updateLocalAudioState() {
+            const btn = document.getElementById('btn-remote-mode');
+            const label = document.getElementById('remote-mode-label');
+            const icon = document.getElementById('remote-mode-icon');
+
+            if (localAudioState === 0) {
+                // ALL ON (Master + Cue)
+                btn.style.borderColor = '#4ade80';
+                btn.style.background = 'rgba(74, 222, 128, 0.2)';
+                label.style.color = '#4ade80';
+                label.textContent = 'AUDIO: ALL ON';
+                icon.style.color = '#4ade80';
+                icon.innerHTML = `<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 16.5c1.3-1.8 1.3-4.2 0-6M19 19.5c3.2-4.5 3.2-10.5 0-15"/>`;
+
+                if (window.masterLocalVol) window.masterLocalVol.gain.value = 1.0;
+                if (window.headphoneLocalVol) window.headphoneLocalVol.gain.value = 1.0;
+            } else if (localAudioState === 1) {
+                // CUE ONLY (Master Muted - Perfect for PC Browser host!)
+                btn.style.borderColor = '#22d3ee';
+                btn.style.background = 'rgba(34, 211, 238, 0.2)';
+                label.style.color = '#22d3ee';
+                label.textContent = 'AUDIO: CUE ONLY';
+                icon.style.color = '#22d3ee';
+                icon.innerHTML = `<path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>`;
+
+                if (window.masterLocalVol) window.masterLocalVol.gain.value = 0.0;
+                if (window.headphoneLocalVol) window.headphoneLocalVol.gain.value = 1.0;
+            } else if (localAudioState === 2) {
+                // MUTED (All Local Muted - Perfect for Tablet)
+                btn.style.borderColor = '#ef4444';
+                btn.style.background = 'rgba(239, 68, 68, 0.2)';
+                label.style.color = '#ef4444';
+                label.textContent = 'AUDIO: MUTED';
+                icon.style.color = '#ef4444';
+                icon.innerHTML = `<path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>`;
+
+                if (window.masterLocalVol) window.masterLocalVol.gain.value = 0.0;
+                if (window.headphoneLocalVol) window.headphoneLocalVol.gain.value = 0.0;
+            }
+        }
+
+        document.getElementById('btn-remote-mode').addEventListener('click', function() {
+            localAudioState = (localAudioState + 1) % 3;
+            updateLocalAudioState();
         });
 
         function overrideTavernForDj(djState) {
