@@ -363,18 +363,11 @@
         .deck-b-theme .headphone-cue-btn.active { background: rgba(34, 211, 238, 0.2); border-color: #22d3ee; color: #fff; box-shadow: 0 0 10px rgba(34, 211, 238, 0.4); }
 
         .eq-section {
-            display: flex; flex-direction: column; gap: 12px; align-items: center;
-            background: rgba(0,0,0,0.3); padding: 12px 0; border-radius: 8px; width: 100%;
+            display: flex; flex-direction: row; justify-content: space-evenly; align-items: center;
+            background: rgba(0,0,0,0.3); padding: 12px 5px; border-radius: 8px; width: 100%; height: 140px;
         }
-        .knob-container { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .eq-fader-col { display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; }
         .knob-label { font-size: 9px; font-weight: bold; color: #9ca3af; letter-spacing: 1px; }
-
-        .eq-ring-wrapper { position: relative; width: 36px; height: 36px; border-radius: 50%; background: transparent; }
-        .eq-ring-meter { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; transition: background 0.1s; }
-        .eq-ring-inner { position: absolute; inset: 4px; background: radial-gradient(circle, #4b5563 30%, #1f2937 80%); border-radius: 50%; border: 2px solid #111; pointer-events: none; }
-        .eq-tick-container { position: absolute; inset: 0; pointer-events: none; }
-        .eq-tick { position: absolute; top: 2px; left: 50%; margin-left: -1px; width: 2px; height: 8px; background: #fff; border-radius: 1px; pointer-events: none; }
-        .eq-hidden-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ns-resize; z-index: 10; -webkit-appearance: slider-vertical; appearance: slider-vertical; }
 
         .channel-fader-container { height: 120px; display: flex; justify-content: center; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 8px; width: 100%; }
         
@@ -754,17 +747,17 @@
                             CUE
                         </button>
                         <div class="eq-section">
-                            <div class="knob-container">
+                            <div class="eq-fader-col">
                                 <span class="knob-label">HI</span>
-                                <div class="eq-ring-wrapper"><div class="eq-ring-meter"></div><div class="eq-ring-inner"><div class="eq-tick-container"><div class="eq-tick"></div></div></div><input type="range" class="eq-hidden-input" id="eq-high-a" min="-40" max="10" step="1" value="0"></div>
+                                <input type="range" class="fader-vertical" id="eq-high-a" min="-40" max="10" step="1" value="0">
                             </div>
-                            <div class="knob-container">
+                            <div class="eq-fader-col">
                                 <span class="knob-label">MID</span>
-                                <div class="eq-ring-wrapper"><div class="eq-ring-meter"></div><div class="eq-ring-inner"><div class="eq-tick-container"><div class="eq-tick"></div></div></div><input type="range" class="eq-hidden-input" id="eq-mid-a" min="-40" max="10" step="1" value="0"></div>
+                                <input type="range" class="fader-vertical" id="eq-mid-a" min="-40" max="10" step="1" value="0">
                             </div>
-                            <div class="knob-container">
+                            <div class="eq-fader-col">
                                 <span class="knob-label">LOW</span>
-                                <div class="eq-ring-wrapper"><div class="eq-ring-meter"></div><div class="eq-ring-inner"><div class="eq-tick-container"><div class="eq-tick"></div></div></div><input type="range" class="eq-hidden-input" id="eq-low-a" min="-40" max="10" step="1" value="0"></div>
+                                <input type="range" class="fader-vertical" id="eq-low-a" min="-40" max="10" step="1" value="0">
                             </div>
                         </div>
                         <div class="channel-fader-container"><input type="range" class="fader-vertical" id="vol-a" min="0" max="1" step="0.01" value="0.8"></div>
@@ -776,17 +769,17 @@
                             CUE
                         </button>
                         <div class="eq-section">
-                            <div class="knob-container">
+                            <div class="eq-fader-col">
                                 <span class="knob-label">HI</span>
-                                <div class="eq-ring-wrapper"><div class="eq-ring-meter"></div><div class="eq-ring-inner"><div class="eq-tick-container"><div class="eq-tick"></div></div></div><input type="range" class="eq-hidden-input" id="eq-high-b" min="-40" max="10" step="1" value="0"></div>
+                                <input type="range" class="fader-vertical" id="eq-high-b" min="-40" max="10" step="1" value="0">
                             </div>
-                            <div class="knob-container">
+                            <div class="eq-fader-col">
                                 <span class="knob-label">MID</span>
-                                <div class="eq-ring-wrapper"><div class="eq-ring-meter"></div><div class="eq-ring-inner"><div class="eq-tick-container"><div class="eq-tick"></div></div></div><input type="range" class="eq-hidden-input" id="eq-mid-b" min="-40" max="10" step="1" value="0"></div>
+                                <input type="range" class="fader-vertical" id="eq-mid-b" min="-40" max="10" step="1" value="0">
                             </div>
-                            <div class="knob-container">
+                            <div class="eq-fader-col">
                                 <span class="knob-label">LOW</span>
-                                <div class="eq-ring-wrapper"><div class="eq-ring-meter"></div><div class="eq-ring-inner"><div class="eq-tick-container"><div class="eq-tick"></div></div></div><input type="range" class="eq-hidden-input" id="eq-low-b" min="-40" max="10" step="1" value="0"></div>
+                                <input type="range" class="fader-vertical" id="eq-low-b" min="-40" max="10" step="1" value="0">
                             </div>
                         </div>
                         <div class="channel-fader-container"><input type="range" class="fader-vertical" id="vol-b" min="0" max="1" step="0.01" value="0.8"></div>
@@ -1791,11 +1784,6 @@
             deck.ui.eqM.value = remoteState.eqM; deck.nodes.mid.gain.value = remoteState.eqM;
             deck.ui.eqL.value = remoteState.eqL; deck.nodes.low.gain.value = remoteState.eqL;
             
-            // Force redraw of LED rings
-            deck.ui.eqH.dispatchEvent(new Event('input'));
-            deck.ui.eqM.dispatchEvent(new Event('input'));
-            deck.ui.eqL.dispatchEvent(new Event('input'));
-            
             if (Math.abs(deck.audio.currentTime - remoteState.playbackTime) > 1.5) { deck.audio.currentTime = remoteState.playbackTime; }
 
             if (remoteState.isPlaying && deck.audio.paused) { deck.audio.play().catch(()=>{}); deck.isPlaying = true; } 
@@ -2035,30 +2023,6 @@
             wheel.addEventListener('mousedown', startDrag); window.addEventListener('mouseup', endDrag); window.addEventListener('mousemove', onDrag);
             wheel.addEventListener('touchstart', startDrag, {passive: true}); window.addEventListener('touchend', endDrag); window.addEventListener('touchmove', onDrag, {passive: false});
         }
-
-        // --- Custom EQ Circular LED Logic ---
-        document.querySelectorAll('.eq-ring-wrapper').forEach(wrapper => {
-            const input = wrapper.querySelector('.eq-hidden-input');
-            const tickCont = wrapper.querySelector('.eq-tick-container');
-            const meter = wrapper.querySelector('.eq-ring-meter');
-            const isDeckB = wrapper.closest('.deck-b-theme') !== null;
-            const color = isDeckB ? '#22d3ee' : '#d946ef';
-            const emptyColor = 'rgba(55,65,81,0.5)';
-
-            input.addEventListener('input', () => {
-                const val = parseFloat(input.value);
-                const min = parseFloat(input.min);
-                const max = parseFloat(input.max);
-                const pct = (val - min) / (max - min); 
-                
-                const deg = (pct * 270) - 135;
-                tickCont.style.transform = `rotate(${deg}deg)`;
-                
-                const fillDeg = pct * 270;
-                meter.style.background = `conic-gradient(from 225deg, ${color} 0deg, ${color} ${fillDeg}deg, ${emptyColor} ${fillDeg}deg, ${emptyColor} 270deg, transparent 270deg)`;
-            });
-            input.dispatchEvent(new Event('input'));
-        });
 
         // --- Visualizer Rendering ---
         const visCanvas = document.getElementById('master-visualizer');
