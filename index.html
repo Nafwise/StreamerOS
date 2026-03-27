@@ -782,6 +782,15 @@
                         <div class="channel-fader-container"><input type="range" class="fader-vertical" id="vol-b" min="0" max="1" step="0.01" value="0.8"></div>
                     </div>
                 </div>
+                
+                <!-- Auto Blend Controls -->
+                <div style="display: flex; justify-content: center; margin-top: 10px;">
+                    <button id="btn-auto-blend" class="btn-refresh" style="color: #fff; background: rgba(147, 51, 234, 0.3); border-color: #d946ef; width: 60%; justify-content: center; padding: 6px;" title="Sync BPM, Play, and Crossfade Automatically">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+                        AUTO BLEND
+                    </button>
+                </div>
+
                 <div class="crossfader-container"><input type="range" class="fader-horizontal" id="crossfader" min="0" max="1" step="0.01" value="0.5"></div>
             </div>
 
@@ -1426,6 +1435,91 @@
             decks[DECK_A].nodes.fadeGain.gain.value = Math.cos(val * 0.5 * Math.PI);
             decks[DECK_B].nodes.fadeGain.gain.value = Math.cos((1.0 - val) * 0.5 * Math.PI);
         }
+
+        // --- Auto Cue and Blend Logic ---
+        const btnAutoBlend = document.getElementById('btn-auto-blend');
+        let autoBlendActive = false;
+
+        btnAutoBlend.addEventListener('click', () => {
+            if (autoBlendActive) return; 
+            
+            const currentVal = parseFloat(crossfaderInput.value);
+            let targetVal, sourceDeck, targetDeck, sourceId, targetId;
+
+            // Determine which way to crossfade
+            if (currentVal < 0.5) {
+                targetVal = 1.0; sourceDeck = decks.a; targetDeck = decks.b; sourceId = 'a'; targetId = 'b';
+            } else {
+                targetVal = 0.0; sourceDeck = decks.b; targetDeck = decks.a; sourceId = 'b'; targetId = 'a';
+            }
+
+            if (!targetDeck.url) return; 
+
+            autoBlendActive = true;
+            btnAutoBlend.style.background = 'rgba(239, 68, 68, 0.3)';
+            btnAutoBlend.style.borderColor = '#ef4444';
+            btnAutoBlend.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pulse"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> BLENDING...`;
+
+            // 1. Auto Sync BPM
+            const sourceBpm = sourceDeck.baseBpm > 0 ? sourceDeck.baseBpm * (1 + parseFloat(sourceDeck.ui.tempo.value)) : 0;
+            if (sourceBpm > 0 && targetDeck.baseBpm > 0) {
+                let requiredTempo = (sourceBpm / targetDeck.baseBpm) - 1;
+                requiredTempo = Math.max(-0.16, Math.min(0.16, requiredTempo)); // Clamp to pitch limits
+                targetDeck.ui.tempo.value = requiredTempo;
+                targetDeck.ui.tempo.dispatchEvent(new Event('input')); 
+            }
+
+            // 2. Auto Cue (Start Target)
+            if (!targetDeck.isPlaying) {
+                targetDeck.audio.currentTime = targetDeck.cuePoint;
+                targetDeck.audio.play().catch(()=>{});
+                targetDeck.isPlaying = true;
+                updateDjTransportUI(targetId);
+            }
+
+            // 3. Crossfade Animation (4 Seconds)
+            const duration = 4000; 
+            const startTime = performance.now();
+            const startVal = currentVal;
+            let lastSyncTime = 0;
+
+            function animateBlend(time) {
+                const elapsed = time - startTime;
+                let progress = elapsed / duration;
+                if (progress > 1.0) progress = 1.0;
+                
+                // Smooth ease in-out mathematical curve
+                const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                crossfaderInput.value = startVal + (targetVal - startVal) * ease;
+                updateCrossfaderLocal();
+
+                // Intermittent sync to cloud so listeners hear/see the fade
+                if (time - lastSyncTime > 400 && isDjBroadcasting) {
+                    lastSyncTime = time;
+                    pushStateToCloud();
+                }
+
+                if (progress < 1.0) {
+                    requestAnimationFrame(animateBlend);
+                } else {
+                    // Blend finished
+                    autoBlendActive = false;
+                    btnAutoBlend.style.background = 'rgba(147, 51, 234, 0.3)';
+                    btnAutoBlend.style.borderColor = '#d946ef';
+                    btnAutoBlend.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg> AUTO BLEND`;
+                    
+                    // Stop the old deck
+                    if (sourceDeck.isPlaying) {
+                        sourceDeck.audio.pause();
+                        sourceDeck.isPlaying = false;
+                        updateDjTransportUI(sourceId);
+                    }
+                    if (isDjBroadcasting) pushStateToCloud();
+                }
+            }
+            requestAnimationFrame(animateBlend);
+        });
 
         // --- Hardware Device Routing ---
         async function populateDevices() {
