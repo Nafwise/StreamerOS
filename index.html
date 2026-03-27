@@ -1449,9 +1449,6 @@
         const projectId = "akashic-tome-27d3f"; const defaultAppId = 'animus-vtt-system'; const apiKey = "AIzaSyD6Nr96oE7v-Hylodd84nvT8Iq2abrW1Zc"; 
         const docPath = `projects/${projectId}/databases/(default)/documents/artifacts/${defaultAppId}/public/data/vttState/music_${instanceId}`;
         
-        // Use direct Google API endpoint for robust pushing (avoiding proxy PATCH limits)
-        const docUrl = `https://firestore.googleapis.com/v1/${docPath}`;
-
         const roomDisplayStr = instanceId.startsWith('room_') ? 'Global Test' : instanceId.substring(0, 8);
         document.getElementById('instance-status').textContent = `Room: ${roomDisplayStr}`;
         
@@ -1463,13 +1460,36 @@
             }
         });
 
+        // Environment-aware API Routing with Automatic Fallback (Bypasses Discord CSP Blocks)
+        let firebaseBaseUrl = window.location.hostname.includes('discordsays.com') ? '/firestore' : 'https://firestore.googleapis.com';
+        
+        async function safeFetch(method, bodyObj = null) {
+            const urlSuffix = `/v1/${docPath}?key=${apiKey}${method === 'PATCH' ? '&updateMask.fieldPaths=payload' : ''}`;
+            const options = { method: method, cache: 'no-store' };
+            if (bodyObj) {
+                options.headers = { 'Content-Type': 'application/json' };
+                options.body = JSON.stringify(bodyObj);
+            }
+            try {
+                let res = await fetch(firebaseBaseUrl + urlSuffix, options);
+                // If proxy fails or returns unexpected strict CORS drops, trigger the fallback
+                if (!res.ok && res.status !== 404) throw new Error("HTTP " + res.status);
+                return res;
+            } catch (e) {
+                // If blocked by CSP or Proxy error, flip the URL strategy and retry instantly
+                console.warn("Fetch blocked by environment, switching endpoints...");
+                firebaseBaseUrl = firebaseBaseUrl === '/firestore' ? 'https://firestore.googleapis.com' : '/firestore';
+                return await fetch(firebaseBaseUrl + urlSuffix, options);
+            }
+        }
+
         let isPolling = false, isPushing = false, lastProcessedTimestamp = 0, currentLoadedUrl = "";
 
         async function pollCloud() {
             if (isPushing || isPolling) return;
             isPolling = true;
             try {
-                const response = await fetch(`${docUrl}?key=${apiKey}`, { method: 'GET', cache: 'no-store' });
+                const response = await safeFetch('GET');
                 if (!response.ok) {
                     if (response.status === 404) document.getElementById('cloud-status').textContent = "Cloud: Online";
                     return;
@@ -1520,10 +1540,8 @@
             };
 
             try {
-                const response = await fetch(`${docUrl}?key=${apiKey}&updateMask.fieldPaths=payload`, {
-                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: docPath, fields: { payload: { stringValue: JSON.stringify(state) } } })
-                });
+                const body = { name: docPath, fields: { payload: { stringValue: JSON.stringify(state) } } };
+                const response = await safeFetch('PATCH', body);
                 if (!response.ok) console.error("Cloud push failed:", await response.text());
             } catch(e) {
                 console.error("Network error pushing to cloud:", e);
