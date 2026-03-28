@@ -785,7 +785,7 @@
                 
                 <!-- Auto Blend Controls -->
                 <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px;">
-                    <button id="btn-auto-dj" class="btn-refresh" style="color: #9ca3af; background: rgba(55, 65, 81, 0.4); border-color: #4b5563; width: 45%; justify-content: center; padding: 6px;" title="Automatically fade 5s before end and load next track">
+                    <button id="btn-auto-dj" class="btn-refresh" style="color: #9ca3af; background: rgba(55, 65, 81, 0.4); border-color: #4b5563; width: 45%; justify-content: center; padding: 6px;" title="Automatically fade 6.8s before end and load next track">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                         AUTO DJ: OFF
                     </button>
@@ -1553,8 +1553,8 @@
                 updateDjTransportUI(targetId);
             }
 
-            // 3. Crossfade & Pitch Drift Animation (Extended to 5 Seconds for a smooth natural pitch reset)
-            const duration = 5000; 
+            // 3. Crossfade & Pitch Drift Animation (Extended to 6.8 Seconds for a smooth natural pitch reset)
+            const duration = 6800; 
             const startTime = performance.now();
             const startVal = currentVal;
             let lastSyncTime = 0;
@@ -2209,8 +2209,8 @@
                 // Check if this deck is the live master output
                 const isActiveDeck = (id === 'a' && currentFade < 0.5) || (id === 'b' && currentFade > 0.5) || (currentFade === 0.5);
                 
-                // Adjusted trigger threshold to 5.0 seconds to match the new 5-second fade duration
-                if (isActiveDeck && remaining <= 5.0 && remaining > 0.5) {
+                // Adjusted trigger threshold to 6.8 seconds to match the new 6.8-second fade duration
+                if (isActiveDeck && remaining <= 6.8 && remaining > 0.5) {
                     triggerAutoBlend();
                 }
             }
