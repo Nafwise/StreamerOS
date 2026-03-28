@@ -1477,7 +1477,8 @@
             }
         });
 
-        function loadRandomUnplayedTrack(deckId) {
+        // --- Intelligent Background Track Scanner ---
+        async function loadRandomUnplayedTrack(deckId, requireInstant = false) {
             let pool = [];
             const allowedDjGenres = ["DnB", "TnB Bardcore", "Meet The Creator"];
             for (const genre of allowedDjGenres) {
@@ -1488,16 +1489,63 @@
                 window.playedDjTrackUrls = []; // Reset history if all played
                 unplayed = pool;
             }
-            if (unplayed.length > 0) {
+
+            // Failsafe: if we need a track IMMEDIATELY for a transition right now
+            if (requireInstant || unplayed.length === 1) {
                 const track = unplayed[Math.floor(Math.random() * unplayed.length)];
                 window.playedDjTrackUrls.push(track.url);
-                
                 loadDjTrack(deckId, track.url, track.title, track.artist);
-                
-                // Trigger Async BPM Calc
                 decks[deckId].ui.bpmDisplay.textContent = "CALC...";
                 fetchAndCalculateBPM(track.url, deckId);
+                return;
             }
+
+            // BACKGROUND SMART SCAN: Find best BPM match
+            decks[deckId].ui.bpmDisplay.textContent = "SCANNING...";
+            const otherDeckId = deckId === 'a' ? 'b' : 'a';
+            const targetBpm = decks[otherDeckId].baseBpm || 120; // Match the currently playing deck
+            
+            // Pick 4 random tracks to scan in parallel
+            const candidates = unplayed.sort(() => 0.5 - Math.random()).slice(0, 4);
+            
+            const bpmPromises = candidates.map(async (track) => {
+                try {
+                    const res = await fetch(track.url);
+                    const buf = await res.arrayBuffer();
+                    const bpm = await calculateBPM(buf);
+                    return { track, bpm };
+                } catch(e) { return { track, bpm: 120 }; }
+            });
+
+            const results = await Promise.all(bpmPromises);
+            
+            let bestTrack = results[0].track;
+            let bestBpm = results[0].bpm;
+            let bestScore = -99999;
+
+            for (const res of results) {
+                const diff = res.bpm - targetBpm;
+                const absDiff = Math.abs(diff);
+                let score = 0;
+                
+                // 1. Limit to max 20 BPM difference
+                if (absDiff <= 20) score += 1000;
+                // 2. Prefer going higher in BPM
+                if (diff >= 0 && diff <= 20) score += 500;
+                // 3. Prefer closest match overall
+                score -= absDiff;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestTrack = res.track;
+                    bestBpm = res.bpm;
+                }
+            }
+
+            window.playedDjTrackUrls.push(bestTrack.url);
+            loadDjTrack(deckId, bestTrack.url, bestTrack.title, bestTrack.artist);
+            decks[deckId].baseBpm = bestBpm;
+            decks[deckId].ui.tempo.dispatchEvent(new Event('input')); 
         }
 
         function triggerAutoBlend() {
@@ -1515,7 +1563,7 @@
 
             // Failsafe for Auto DJ: if the target deck is empty, load a track instantly
             if (!targetDeck.url && isAutoDjActive) {
-                loadRandomUnplayedTrack(targetId);
+                loadRandomUnplayedTrack(targetId, true); // MUST BE INSTANT
             }
 
             if (!targetDeck.url) return; 
@@ -1575,7 +1623,6 @@
                     const currentTargetTempo = targetTempoStart * (1 - progress); 
                     const currentSourceTempo = sourceTempoStart + (sourceTempoEnd - sourceTempoStart) * progress;
                     
-                    // Directly update DOM and engine to avoid freezing UI with rapid Event dispatching
                     targetDeck.ui.tempo.value = currentTargetTempo;
                     targetDeck.audio.playbackRate = 1 + currentTargetTempo;
                     targetDeck.ui.bpmDisplay.innerHTML = `${(targetDeck.baseBpm * (1 + currentTargetTempo)).toFixed(1)} <span style="font-size:12px; color:#9ca3af; font-weight:normal;">${(currentTargetTempo > 0 ? "+" : "") + (currentTargetTempo * 100).toFixed(1)}%</span>`;
@@ -1607,9 +1654,9 @@
                         updateDjTransportUI(sourceId);
                     }
                     
-                    // 4. Auto DJ Load Next Track into outgoing deck
+                    // 4. Auto DJ Load Next Track into outgoing deck (Allowed to background scan!)
                     if (isAutoDjActive) {
-                        loadRandomUnplayedTrack(sourceId);
+                        loadRandomUnplayedTrack(sourceId, false);
                     }
 
                     if (isDjBroadcasting) pushStateToCloud();
