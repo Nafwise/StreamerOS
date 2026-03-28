@@ -2172,6 +2172,27 @@
             else if (type === 'rewind' && sfxRewindEl) { sfxRewindEl.currentTime = 0; sfxRewindEl.play().catch(()=>{}); }
         }
 
+        // --- DJ Keyboard Shortcuts ---
+        window.addEventListener('keydown', (e) => {
+            // Ignore keystrokes if typing in a text box (like the Room Tunnel ID)
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            const key = e.key.toLowerCase();
+            if (key === 'a' && decks.a.url) {
+                toggleDjPlay('a');
+                queueDjStateSync();
+                // Visual pop feedback
+                decks.a.ui.playBtn.style.transform = 'scale(0.85)';
+                setTimeout(() => decks.a.ui.playBtn.style.transform = 'scale(1)', 150);
+            } else if (key === 'd' && decks.b.url) {
+                toggleDjPlay('b');
+                queueDjStateSync();
+                // Visual pop feedback
+                decks.b.ui.playBtn.style.transform = 'scale(0.85)';
+                setTimeout(() => decks.b.ui.playBtn.style.transform = 'scale(1)', 150);
+            }
+        });
+
         // --- DJ Transport & Scratching ---
         function toggleDjPlay(id) {
             const deck = decks[id]; if (!deck.url) return;
