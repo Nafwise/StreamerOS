@@ -1447,6 +1447,21 @@
         let isAutoDjActive = false;
         window.playedDjTrackUrls = window.playedDjTrackUrls || [];
 
+        // --- Async BPM Fetcher ---
+        async function fetchAndCalculateBPM(url, deckId) {
+            try {
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                const detectedBpm = await calculateBPM(arrayBuffer);
+                decks[deckId].baseBpm = detectedBpm;
+                decks[deckId].ui.tempo.dispatchEvent(new Event('input')); // Updates UI with new BPM
+            } catch(e) {
+                console.warn("BPM Calc failed for:", url, e);
+                decks[deckId].baseBpm = 0;
+                decks[deckId].ui.bpmDisplay.textContent = "--- BPM"; 
+            }
+        }
+
         btnAutoDj.addEventListener('click', () => {
             isAutoDjActive = !isAutoDjActive;
             if (isAutoDjActive) {
@@ -1476,9 +1491,12 @@
             if (unplayed.length > 0) {
                 const track = unplayed[Math.floor(Math.random() * unplayed.length)];
                 window.playedDjTrackUrls.push(track.url);
+                
                 loadDjTrack(deckId, track.url, track.title, track.artist);
-                decks[deckId].baseBpm = 0;
-                decks[deckId].ui.bpmDisplay.textContent = "--- BPM"; 
+                
+                // Trigger Async BPM Calc
+                decks[deckId].ui.bpmDisplay.textContent = "CALC...";
+                fetchAndCalculateBPM(track.url, deckId);
             }
         }
 
@@ -2034,9 +2052,9 @@
             loadDjTrack(deckId, track.url, track.title, track.artist);
             queueDjStateSync();
 
-            // INSTANT LOAD: Removed slow network fetch for BPM.
-            decks[deckId].baseBpm = 0;
-            decks[deckId].ui.bpmDisplay.textContent = "--- BPM"; 
+            // Trigger Async BPM Calc instead of zeroing it out
+            decks[deckId].ui.bpmDisplay.textContent = "CALC...";
+            fetchAndCalculateBPM(track.url, deckId);
         }
 
         // --- BPM Calculator for Local Files Only ---
@@ -2120,8 +2138,6 @@
             deck.audio.pause(); deck.isPlaying = false;
             deck.ui.tempo.value = 0; deck.audio.playbackRate = 1;
             updateDjTransportUI(id);
-            
-            if(artist !== "Suno Pro (Local)") { deck.baseBpm = 0; deck.ui.bpmDisplay.textContent = "--- BPM"; }
         }
 
         function playSfx(type) {
