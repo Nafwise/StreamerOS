@@ -784,8 +784,12 @@
                 </div>
                 
                 <!-- Auto Blend Controls -->
-                <div style="display: flex; justify-content: center; margin-top: 10px;">
-                    <button id="btn-auto-blend" class="btn-refresh" style="color: #fff; background: rgba(147, 51, 234, 0.3); border-color: #d946ef; width: 60%; justify-content: center; padding: 6px;" title="Sync BPM, Play, and Crossfade Automatically">
+                <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px;">
+                    <button id="btn-auto-dj" class="btn-refresh" style="color: #9ca3af; background: rgba(55, 65, 81, 0.4); border-color: #4b5563; width: 45%; justify-content: center; padding: 6px;" title="Automatically fade 4s before end and load next track">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        AUTO DJ: OFF
+                    </button>
+                    <button id="btn-auto-blend" class="btn-refresh" style="color: #fff; background: rgba(147, 51, 234, 0.3); border-color: #d946ef; width: 45%; justify-content: center; padding: 6px;" title="Sync BPM, Play, and Crossfade Automatically">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
                         AUTO BLEND
                     </button>
@@ -1436,11 +1440,49 @@
             decks[DECK_B].nodes.fadeGain.gain.value = Math.cos((1.0 - val) * 0.5 * Math.PI);
         }
 
-        // --- Auto Cue and Blend Logic ---
+        // --- Auto Cue, Auto DJ and Blend Logic ---
         const btnAutoBlend = document.getElementById('btn-auto-blend');
+        const btnAutoDj = document.getElementById('btn-auto-dj');
         let autoBlendActive = false;
+        let isAutoDjActive = false;
+        window.playedDjTrackUrls = window.playedDjTrackUrls || [];
 
-        btnAutoBlend.addEventListener('click', () => {
+        btnAutoDj.addEventListener('click', () => {
+            isAutoDjActive = !isAutoDjActive;
+            if (isAutoDjActive) {
+                btnAutoDj.style.color = '#fff';
+                btnAutoDj.style.background = 'rgba(34, 211, 238, 0.3)';
+                btnAutoDj.style.borderColor = '#22d3ee';
+                btnAutoDj.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> AUTO DJ: ON`;
+            } else {
+                btnAutoDj.style.color = '#9ca3af';
+                btnAutoDj.style.background = 'rgba(55, 65, 81, 0.4)';
+                btnAutoDj.style.borderColor = '#4b5563';
+                btnAutoDj.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> AUTO DJ: OFF`;
+            }
+        });
+
+        function loadRandomUnplayedTrack(deckId) {
+            let pool = [];
+            const allowedDjGenres = ["DnB", "TnB Bardcore", "Meet The Creator"];
+            for (const genre of allowedDjGenres) {
+                if (musicRepository[genre]) pool = pool.concat(musicRepository[genre].tracks);
+            }
+            let unplayed = pool.filter(t => !window.playedDjTrackUrls.includes(t.url));
+            if (unplayed.length === 0) {
+                window.playedDjTrackUrls = []; // Reset history if all played
+                unplayed = pool;
+            }
+            if (unplayed.length > 0) {
+                const track = unplayed[Math.floor(Math.random() * unplayed.length)];
+                window.playedDjTrackUrls.push(track.url);
+                loadDjTrack(deckId, track.url, track.title, track.artist);
+                decks[deckId].baseBpm = 0;
+                decks[deckId].ui.bpmDisplay.textContent = "--- BPM"; 
+            }
+        }
+
+        function triggerAutoBlend() {
             if (autoBlendActive) return; 
             
             const currentVal = parseFloat(crossfaderInput.value);
@@ -1451,6 +1493,11 @@
                 targetVal = 1.0; sourceDeck = decks.a; targetDeck = decks.b; sourceId = 'a'; targetId = 'b';
             } else {
                 targetVal = 0.0; sourceDeck = decks.b; targetDeck = decks.a; sourceId = 'b'; targetId = 'a';
+            }
+
+            // Failsafe for Auto DJ: if the target deck is empty, load a track instantly
+            if (!targetDeck.url && isAutoDjActive) {
+                loadRandomUnplayedTrack(targetId);
             }
 
             if (!targetDeck.url) return; 
@@ -1515,11 +1562,19 @@
                         sourceDeck.isPlaying = false;
                         updateDjTransportUI(sourceId);
                     }
+                    
+                    // 4. Auto DJ Load Next Track into outgoing deck
+                    if (isAutoDjActive) {
+                        loadRandomUnplayedTrack(sourceId);
+                    }
+
                     if (isDjBroadcasting) pushStateToCloud();
                 }
             }
             requestAnimationFrame(animateBlend);
-        });
+        }
+
+        btnAutoBlend.addEventListener('click', triggerAutoBlend);
 
         // --- Hardware Device Routing ---
         async function populateDevices() {
@@ -2100,9 +2155,22 @@
                 deck.ui.jogRing.style.animationPlayState = 'paused';
             }
         }
+        
         function updateDjProgress(id) {
             const deck = decks[id]; if (isNaN(deck.audio.duration)) return;
             deck.ui.timeCur.textContent = formatTime(deck.audio.currentTime);
+            
+            // --- AUTO DJ TRIGGER ---
+            if (isAutoDjActive && !autoBlendActive && deck.isPlaying) {
+                const remaining = deck.audio.duration - deck.audio.currentTime;
+                const currentFade = parseFloat(crossfaderInput.value);
+                // Check if this deck is the live master output
+                const isActiveDeck = (id === 'a' && currentFade < 0.5) || (id === 'b' && currentFade > 0.5) || (currentFade === 0.5);
+                
+                if (isActiveDeck && remaining <= 4.0 && remaining > 0.5) {
+                    triggerAutoBlend();
+                }
+            }
         }
 
         function setupDjScrubbing(id) {
