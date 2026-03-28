@@ -785,7 +785,7 @@
                 
                 <!-- Auto Blend Controls -->
                 <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px;">
-                    <button id="btn-auto-dj" class="btn-refresh" style="color: #9ca3af; background: rgba(55, 65, 81, 0.4); border-color: #4b5563; width: 45%; justify-content: center; padding: 6px;" title="Automatically fade 4s before end and load next track">
+                    <button id="btn-auto-dj" class="btn-refresh" style="color: #9ca3af; background: rgba(55, 65, 81, 0.4); border-color: #4b5563; width: 45%; justify-content: center; padding: 6px;" title="Automatically fade 5s before end and load next track">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                         AUTO DJ: OFF
                     </button>
@@ -1525,13 +1525,24 @@
             btnAutoBlend.style.borderColor = '#ef4444';
             btnAutoBlend.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pulse"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> BLENDING...`;
 
-            // 1. Auto Sync BPM
+            // 1. Setup Tempo Synchronization & Pitch Drift Goals
             const sourceBpm = sourceDeck.baseBpm > 0 ? sourceDeck.baseBpm * (1 + parseFloat(sourceDeck.ui.tempo.value)) : 0;
+            let targetTempoStart = 0;
+            let sourceTempoStart = parseFloat(sourceDeck.ui.tempo.value);
+            let sourceTempoEnd = sourceTempoStart;
+
             if (sourceBpm > 0 && targetDeck.baseBpm > 0) {
-                let requiredTempo = (sourceBpm / targetDeck.baseBpm) - 1;
-                requiredTempo = Math.max(-0.16, Math.min(0.16, requiredTempo)); // Clamp to pitch limits
-                targetDeck.ui.tempo.value = requiredTempo;
-                targetDeck.ui.tempo.dispatchEvent(new Event('input')); 
+                // Match incoming track to outgoing track's current speed
+                targetTempoStart = (sourceBpm / targetDeck.baseBpm) - 1;
+                targetTempoStart = Math.max(-0.16, Math.min(0.16, targetTempoStart));
+                
+                targetDeck.ui.tempo.value = targetTempoStart;
+                targetDeck.audio.playbackRate = 1 + targetTempoStart;
+                targetDeck.ui.bpmDisplay.innerHTML = `${(targetDeck.baseBpm * (1 + targetTempoStart)).toFixed(1)} <span style="font-size:12px; color:#9ca3af; font-weight:normal;">${(targetTempoStart > 0 ? "+" : "") + (targetTempoStart * 100).toFixed(1)}%</span>`;
+                
+                // Calculate where outgoing track needs to go to stay synced as incoming resets to its natural BPM
+                sourceTempoEnd = (targetDeck.baseBpm / sourceDeck.baseBpm) - 1;
+                sourceTempoEnd = Math.max(-0.16, Math.min(0.16, sourceTempoEnd));
             }
 
             // 2. Auto Cue (Start Target)
@@ -1542,8 +1553,8 @@
                 updateDjTransportUI(targetId);
             }
 
-            // 3. Crossfade Animation (4 Seconds)
-            const duration = 4000; 
+            // 3. Crossfade & Pitch Drift Animation (Extended to 5 Seconds for a smooth natural pitch reset)
+            const duration = 5000; 
             const startTime = performance.now();
             const startVal = currentVal;
             let lastSyncTime = 0;
@@ -1553,11 +1564,26 @@
                 let progress = elapsed / duration;
                 if (progress > 1.0) progress = 1.0;
                 
-                // Smooth ease in-out mathematical curve
+                // Smooth ease in-out mathematical curve for volume
                 const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
                 crossfaderInput.value = startVal + (targetVal - startVal) * ease;
                 updateCrossfaderLocal();
+
+                // DRIFT TEMPOS BACK TO TARGET'S ORIGINAL BPM
+                if (sourceBpm > 0 && targetDeck.baseBpm > 0) {
+                    const currentTargetTempo = targetTempoStart * (1 - progress); 
+                    const currentSourceTempo = sourceTempoStart + (sourceTempoEnd - sourceTempoStart) * progress;
+                    
+                    // Directly update DOM and engine to avoid freezing UI with rapid Event dispatching
+                    targetDeck.ui.tempo.value = currentTargetTempo;
+                    targetDeck.audio.playbackRate = 1 + currentTargetTempo;
+                    targetDeck.ui.bpmDisplay.innerHTML = `${(targetDeck.baseBpm * (1 + currentTargetTempo)).toFixed(1)} <span style="font-size:12px; color:#9ca3af; font-weight:normal;">${(currentTargetTempo > 0 ? "+" : "") + (currentTargetTempo * 100).toFixed(1)}%</span>`;
+
+                    sourceDeck.ui.tempo.value = currentSourceTempo;
+                    sourceDeck.audio.playbackRate = 1 + currentSourceTempo;
+                    sourceDeck.ui.bpmDisplay.innerHTML = `${(sourceDeck.baseBpm * (1 + currentSourceTempo)).toFixed(1)} <span style="font-size:12px; color:#9ca3af; font-weight:normal;">${(currentSourceTempo > 0 ? "+" : "") + (currentSourceTempo * 100).toFixed(1)}%</span>`;
+                }
 
                 // Intermittent sync to cloud so listeners hear/see the fade
                 if (time - lastSyncTime > 400 && isDjBroadcasting) {
@@ -2183,7 +2209,8 @@
                 // Check if this deck is the live master output
                 const isActiveDeck = (id === 'a' && currentFade < 0.5) || (id === 'b' && currentFade > 0.5) || (currentFade === 0.5);
                 
-                if (isActiveDeck && remaining <= 4.0 && remaining > 0.5) {
+                // Adjusted trigger threshold to 5.0 seconds to match the new 5-second fade duration
+                if (isActiveDeck && remaining <= 5.0 && remaining > 0.5) {
                     triggerAutoBlend();
                 }
             }
