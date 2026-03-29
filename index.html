@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Animus Tavern Music Player</title>
+    
+    <!-- ID3 Tag Parser for Local DJ File Uploads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+
     <style>
         /* --- Zero-Dependency Pure CSS --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1992,6 +1996,11 @@
 
                 if (window.masterLocalVol) window.masterLocalVol.gain.value = 1.0;
                 if (window.headphoneLocalVol) window.headphoneLocalVol.gain.value = 1.0;
+                audioMain.muted = false;
+                decks.a.audio.muted = false;
+                decks.b.audio.muted = false;
+                if (sfxScratchEl) sfxScratchEl.muted = false;
+                if (sfxRewindEl) sfxRewindEl.muted = false;
             } else if (localAudioState === 1) {
                 // CUE ONLY (Master Muted - Perfect for PC Browser host!)
                 btn.style.borderColor = '#22d3ee';
@@ -2003,6 +2012,11 @@
 
                 if (window.masterLocalVol) window.masterLocalVol.gain.value = 0.0;
                 if (window.headphoneLocalVol) window.headphoneLocalVol.gain.value = 1.0;
+                audioMain.muted = false;
+                decks.a.audio.muted = false;
+                decks.b.audio.muted = false;
+                if (sfxScratchEl) sfxScratchEl.muted = false;
+                if (sfxRewindEl) sfxRewindEl.muted = false;
             } else if (localAudioState === 2) {
                 // MUTED (All Local Muted - Perfect for Tablet)
                 btn.style.borderColor = '#ef4444';
@@ -2014,6 +2028,11 @@
 
                 if (window.masterLocalVol) window.masterLocalVol.gain.value = 0.0;
                 if (window.headphoneLocalVol) window.headphoneLocalVol.gain.value = 0.0;
+                audioMain.muted = true;
+                decks.a.audio.muted = true;
+                decks.b.audio.muted = true;
+                if (sfxScratchEl) sfxScratchEl.muted = true;
+                if (sfxRewindEl) sfxRewindEl.muted = true;
             }
         }
 
@@ -2064,6 +2083,11 @@
             deck.ui.eqH.value = remoteState.eqH; deck.nodes.high.gain.value = remoteState.eqH;
             deck.ui.eqM.value = remoteState.eqM; deck.nodes.mid.gain.value = remoteState.eqM;
             deck.ui.eqL.value = remoteState.eqL; deck.nodes.low.gain.value = remoteState.eqL;
+            
+            // Force redraw of LED rings
+            deck.ui.eqH.dispatchEvent(new Event('input'));
+            deck.ui.eqM.dispatchEvent(new Event('input'));
+            deck.ui.eqL.dispatchEvent(new Event('input'));
             
             if (Math.abs(deck.audio.currentTime - remoteState.playbackTime) > 1.5) { deck.audio.currentTime = remoteState.playbackTime; }
 
@@ -2275,7 +2299,7 @@
         }
 
         function playSfx(type) {
-            if (!audioCtx || isSilentRemote) return;
+            if (!audioCtx || localAudioState === 2) return;
             if (type === 'scratch' && sfxScratchEl) { sfxScratchEl.currentTime = 0; sfxScratchEl.play().catch(()=>{}); }
             else if (type === 'rewind' && sfxRewindEl) { sfxRewindEl.currentTime = 0; sfxRewindEl.play().catch(()=>{}); }
         }
@@ -2284,6 +2308,10 @@
         window.addEventListener('keydown', (e) => {
             // Ignore keystrokes if typing in a text box (like the Room Tunnel ID)
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            // FIX: Ignore the browser's "key held down" auto-repeat spam completely.
+            // This ensures holding the key down only triggers ONCE and won't interrupt fader slides!
+            if (e.repeat) return;
 
             const key = e.key.toLowerCase();
             if (key === 'a' && decks.a.url) {
@@ -2398,6 +2426,30 @@
             wheel.addEventListener('mousedown', startDrag); window.addEventListener('mouseup', endDrag); window.addEventListener('mousemove', onDrag);
             wheel.addEventListener('touchstart', startDrag, {passive: true}); window.addEventListener('touchend', endDrag); window.addEventListener('touchmove', onDrag, {passive: false});
         }
+
+        // --- Custom EQ Circular LED Logic ---
+        document.querySelectorAll('.eq-ring-wrapper').forEach(wrapper => {
+            const input = wrapper.querySelector('.eq-hidden-input');
+            const tickCont = wrapper.querySelector('.eq-tick-container');
+            const meter = wrapper.querySelector('.eq-ring-meter');
+            const isDeckB = wrapper.closest('.deck-b-theme') !== null;
+            const color = isDeckB ? '#22d3ee' : '#d946ef';
+            const emptyColor = 'rgba(55,65,81,0.5)';
+
+            input.addEventListener('input', () => {
+                const val = parseFloat(input.value);
+                const min = parseFloat(input.min);
+                const max = parseFloat(input.max);
+                const pct = (val - min) / (max - min); 
+                
+                const deg = (pct * 270) - 135;
+                tickCont.style.transform = `rotate(${deg}deg)`;
+                
+                const fillDeg = pct * 270;
+                meter.style.background = `conic-gradient(from 225deg, ${color} 0deg, ${color} ${fillDeg}deg, ${emptyColor} ${fillDeg}deg, ${emptyColor} 270deg, transparent 270deg)`;
+            });
+            input.dispatchEvent(new Event('input'));
+        });
 
         // --- Visualizer Rendering ---
         const visCanvas = document.getElementById('master-visualizer');
