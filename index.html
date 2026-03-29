@@ -1484,10 +1484,20 @@
         // --- Intelligent Background Track Scanner ---
         async function loadRandomUnplayedTrack(deckId, requireInstant = false) {
             let pool = [];
-            const allowedDjGenres = ["DnB", "TnB Bardcore", "Meet The Creator"];
-            for (const genre of allowedDjGenres) {
+            
+            // SMART CURATION: Only pull from Accordion folders you currently have open!
+            // If everything is closed, safely fallback to the global allowed genres list.
+            let activeGenres = [];
+            if (window.openDjGenres && window.openDjGenres.size > 0) {
+                activeGenres = Array.from(window.openDjGenres);
+            } else {
+                activeGenres = window.allowedDjGenres || ["DnB", "TnB Bardcore", "Meet The Creator"];
+            }
+
+            for (const genre of activeGenres) {
                 if (musicRepository[genre]) pool = pool.concat(musicRepository[genre].tracks);
             }
+            
             let unplayed = pool.filter(t => !window.playedDjTrackUrls.includes(t.url));
             if (unplayed.length === 0) {
                 window.playedDjTrackUrls = []; // Reset history if all played
@@ -1495,12 +1505,14 @@
             }
 
             // Failsafe: if we need a track IMMEDIATELY for a transition right now
-            if (requireInstant || unplayed.length === 1) {
+            if (requireInstant || unplayed.length <= 1) {
                 const track = unplayed[Math.floor(Math.random() * unplayed.length)];
-                window.playedDjTrackUrls.push(track.url);
-                loadDjTrack(deckId, track.url, track.title, track.artist);
-                decks[deckId].ui.bpmDisplay.textContent = "CALC...";
-                fetchAndCalculateBPM(track.url, deckId);
+                if(track) {
+                    window.playedDjTrackUrls.push(track.url);
+                    loadDjTrack(deckId, track.url, track.title, track.artist);
+                    decks[deckId].ui.bpmDisplay.textContent = "CALC...";
+                    fetchAndCalculateBPM(track.url, deckId);
+                }
                 return;
             }
 
