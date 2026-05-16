@@ -186,9 +186,9 @@
                         </div>
 
                         <!-- Loading State -->
-                        <div id="ai-loading" class="hidden flex flex-col items-center justify-center py-6 text-indigo-400 animate-pulse text-sm gap-2">
-                            <svg class="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                            Gemini is analyzing the patterns...
+                        <div id="ai-loading" class="hidden flex flex-col items-center justify-center py-6 text-indigo-400 animate-pulse text-sm gap-2 text-center">
+                            <svg class="w-6 h-6 animate-spin mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            <span id="ai-loading-text">Gemini is analyzing the patterns...</span>
                         </div>
 
                         <!-- Results State -->
@@ -267,6 +267,7 @@
         const activeMIDIInputs = new Map();
         let selectedControlKey = null; 
         let currentControlType = null;
+        let cachedMixxxXML = null; // Cache to hold the GitHub Blueprint
         
         // Settings State loaded from LocalStorage
         let userApiKey = localStorage.getItem('ns4fx_api_key') || "";
@@ -315,6 +316,7 @@
         const aiCustomNameInput = document.getElementById('custom-name-input');
         const btnAnalyze = document.getElementById('btn-analyze');
         const aiLoading = document.getElementById('ai-loading');
+        const aiLoadingText = document.getElementById('ai-loading-text');
         const aiResults = document.getElementById('ai-results');
         const aiSuggestedName = document.getElementById('ai-suggested-name');
         const btnApplyName = document.getElementById('btn-apply-name');
@@ -639,25 +641,65 @@
             aiResults.classList.add('hidden');
             aiLoading.classList.remove('hidden');
 
-            // Formulate AI Prompt based on control history
+            // --- CROSS REFERENCE LOGIC ---
+            if (!cachedMixxxXML) {
+                aiLoadingText.innerText = "Downloading NS4FX XML Blueprint...";
+                try {
+                    const xmlRes = await fetch("https://raw.githubusercontent.com/mixxxdj/mixxx/main/res/controllers/Numark%20NS4FX.midi.xml");
+                    if (xmlRes.ok) {
+                        cachedMixxxXML = await xmlRes.text();
+                    }
+                } catch(e) {
+                    console.warn("Could not fetch Mixxx XML for reference", e);
+                }
+            }
+            aiLoadingText.innerText = "Gemini is cross-referencing blueprint...";
+
+            // Calculate exact Hex mappings used in Mixxx XML
+            let statusHex = "Unknown";
+            const chOffset = controlData.channel - 1;
+            if (controlData.type === 'Note') {
+                statusHex = '0x' + (0x90 + chOffset).toString(16).toUpperCase();
+            } else if (controlData.type === 'CC') {
+                statusHex = '0x' + (0xB0 + chOffset).toString(16).toUpperCase();
+            } else if (controlData.type === 'PitchBend') {
+                statusHex = '0x' + (0xE0 + chOffset).toString(16).toUpperCase();
+            }
+            
+            const controlNum = controlData.cc !== undefined ? controlData.cc : (controlData.note !== undefined ? controlData.note : 0);
+            const midinoHex = '0x' + controlNum.toString(16).toUpperCase();
+
+            // Formulate precision AI Prompt 
             const prompt = `You are an expert DJ Controller MIDI mapping engineer. 
-            I am mapping a Numark NS4FX. Analyze the following captured MIDI data for a specific physical control I just touched.
+            I am mapping a Numark NS4FX. 
+            
+            ${cachedMixxxXML ? 'I have provided the official Mixxx XML mapping blueprint for the NS4FX below. You MUST use this to accurately identify the control.' : 'Cross-reference standard Numark NS4FX mapping blueprints.'}
+            
+            Analyze the following captured MIDI data for a specific physical control I just touched.
             
             Data Captured:
             - Message Type: ${controlData.type}
             - MIDI Channel: ${controlData.channel}
-            ${controlData.cc !== undefined ? '- CC Number: ' + controlData.cc : ''}
-            ${controlData.note !== undefined ? '- Note Number: ' + controlData.note + ' (Musical Note: ' + controlData.musicalNote + ')' : ''}
+            ${controlData.cc !== undefined ? '- CC Number (Control): ' + controlData.cc : ''}
+            ${controlData.note !== undefined ? '- Note Number (Control): ' + controlData.note + ' (Musical Note: ' + controlData.musicalNote + ')' : ''}
+            - Expected XML <status> Byte: ${statusHex}
+            - Expected XML <midino> (Hex): ${midinoHex}
+            - Expected XML <midino> (Decimal): ${controlNum}
             - Recent Value History (chronological): [${controlData.history.join(', ')}]
 
-            Based on DJ controller standards (like Numark/Pioneer mappings), deduce what this control likely is (e.g., Fader, Crossfader, EQ Knob, Play Button, Hot Cue Pad, Jog Wheel).
-
-            Respond with ONLY JSON matching this exact schema:
+            Instructions:
+            1. If the Mixxx XML blueprint is provided, lookup the exact control. Find the <control> block where the <status> exactly matches ${statusHex} AND the <midino> matches ${midinoHex} (or its decimal equivalent ${controlNum}).
+            2. Extract the <group> and <key> associated with that block to deduce EXACTLY what this physical control is (e.g., 'Deck 1 Volume Fader', 'Deck 2 Play/Pause', 'Crossfader', 'Deck 3 EQ High').
+            3. DO NOT simply guess "Play/Pause" for everything. Be strictly bound to the XML mapping provided for that channel and control number.
+            
+            Respond with ONLY valid JSON matching this exact schema:
             {
-                "suggestedName": "A concise descriptive name",
-                "analysis": "A brief 1-2 sentence explanation of your deduction based on the data.",
+                "suggestedName": "The exact physical name of the control based on the blueprint (e.g., 'Deck 1 Play/Pause' or 'Deck 2 High EQ')",
+                "analysis": "A brief explanation of how you identified this from the blueprint, explicitly mentioning the XML <group> and <key> you found.",
                 "mappingCode": "A generic JSON mapping snippet showing how to map this in software"
-            }`;
+            }
+            
+            ${cachedMixxxXML ? '\n--- MIXXX XML BLUEPRINT ---\n' + cachedMixxxXML + '\n---------------------------\n' : ''}`;
 
             try {
                 // Dynamically use variables from the Settings Modal
